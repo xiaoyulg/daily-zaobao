@@ -51,23 +51,28 @@
     return 'https://www.baidu.com/s?wd=' + encodeURIComponent(s);
   }
 
-  function renderSources(sources) {
-    if (!sources || !sources.length) return '';
-    var parts = sources.map(function (s) {
-      if (s && typeof s === 'object') {
-        var label = esc(s.name || s.title || s.url || '来源');
-        var u = s.url ? String(s.url) : null;
-        return u
-          ? '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" title="阅读原文：' + label + '">' + label + '</a>'
-          : '<span>' + label + '</span>';
-      }
-      var url = sourceURL(s);
-      var text = esc(s);
-      return url
-        ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" title="查看来源：' + text + '">' + text + '</a>'
-        : '<span>' + text + '</span>';
-    });
-    return '<div class="sources"><b>来源</b> ' + parts.join(' · ') + '</div>';
+  function renderSources(sources, shareMini) {
+    if ((!sources || !sources.length) && !shareMini) return '';
+    var inner = '';
+    if (sources && sources.length) {
+      var parts = sources.map(function (s) {
+        if (s && typeof s === 'object') {
+          var label = esc(s.name || s.title || s.url || '来源');
+          var u = s.url ? String(s.url) : null;
+          return u
+            ? '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" title="阅读原文：' + label + '">' + label + '</a>'
+            : '<span>' + label + '</span>';
+        }
+        var url = sourceURL(s);
+        var text = esc(s);
+        return url
+          ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" title="查看来源：' + text + '">' + text + '</a>'
+          : '<span>' + text + '</span>';
+      });
+      inner = '<span class="sources-text"><b>来源</b> ' + parts.join(' · ') + '</span>';
+    }
+    if (shareMini) inner += shareMini;
+    return '<div class="sources sources-row">' + inner + '</div>';
   }
 
   function loadJSON(url) {
@@ -197,10 +202,10 @@
         if (it.quote) html += '<div class="quote">' + esc(it.quote) + '</div>';
         html += '</div>';
       }
-      html += renderSources(it.sources);
-      if (window.ZaoShare) {
-        html += ZaoShare.bar({ kind: 'item', date: date, no: n + 1, title: it.title || '', quote: it.quote || '' });
-      }
+      var itemShare = window.ZaoShare
+        ? ZaoShare.miniBar({ kind: 'item', date: date, no: n + 1, title: it.title || '', quote: it.quote || '' })
+        : '';
+      html += renderSources(it.sources, itemShare);
       html += '</div></section>';
     });
 
