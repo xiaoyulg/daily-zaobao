@@ -1,17 +1,34 @@
 (function () {
   'use strict';
 
-  var FONT = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif';
-  var ACCENT = '#9c2b25';
-  var INK = '#1c1a17';
-  var BG = '#faf9f6';
+  var ICON = {
+    wechat: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.7 3C4.9 3 1.8 5.7 1.8 9.1c0 2 .9 3.8 2.4 5l-.6 1.9 2.1-1.1c.8.2 1.7.4 2.6.4h.5c-.1-.4-.1-.9-.1-1.4 0-3.6 3.2-6.5 7.2-6.5h.4C15.9 4.8 12.7 3 8.7 3zm-2.9 5.2a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm5.8 0a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/><path d="M22.2 14.2c0-3-2.9-5.4-6.4-5.4s-6.4 2.4-6.4 5.4 2.9 5.4 6.4 5.4c.7 0 1.4-.1 2-.3l2 1-.6-1.8c1.8-1 3-2.7 3-4.3zm-8.6-1.6a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8zm4 0a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8z"/></svg>',
+    moments: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="3.5"/><circle cx="12" cy="13.5" r="3.4"/><path d="M8 7l1.1-2h5.8L16 7"/></svg>',
+    weibo: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8.2c-4.5 0-8.2 2.8-8.2 6.1 0 3.4 3.7 6.1 8.2 6.1s8.2-2.7 8.2-6.1c0-3.3-3.7-6.1-8.2-6.1zm0 9.4c-2.9 0-5.3-1.5-5.3-3.4 0-1.8 2.4-3.3 5.3-3.3s5.3 1.5 5.3 3.3c0 1.9-2.4 3.4-5.3 3.4z"/><path d="M17.8 3.2c2.6.5 4.3 2.3 4.3 4.5 0 1.2-.5 2.3-1.4 3.1l-1.3-1.4c.6-.5.9-1.1.9-1.8 0-1.3-1.1-2.4-2.7-2.8l.2-1.6zM4.6 6.9C5.9 5.7 7.7 5 9.6 5l.1 1.7c-1.4.1-2.6.6-3.5 1.4L4.6 6.9z"/><circle cx="12" cy="14.2" r="1.7"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-4.9-6.4L5.9 22H2.8l7.3-8.4L2 2h6.5l4.4 5.8L18.9 2zm-1.1 18h1.7L7.3 3.9H5.5L17.8 20z"/></svg>',
+    facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7A10 10 0 0 0 22 12z"/></svg>',
+    linkedin: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 2H3.6C2.7 2 2 2.7 2 3.6v16.8c0 .9.7 1.6 1.6 1.6h16.8c.9 0 1.6-.7 1.6-1.6V3.6c0-.9-.7-1.6-1.6-1.6zM8 18.5H5V9.4h3v9.1zM6.5 8.1a1.7 1.7 0 1 1 0-3.5 1.7 1.7 0 0 1 0 3.5zm12 10.4h-3v-4.5c0-1.1 0-2.5-1.5-2.5s-1.8 1.2-1.8 2.4v4.6H9.2V9.4h2.9v1.2h.1c.4-.8 1.4-1.6 2.9-1.6 3.1 0 3.7 2 3.7 4.6v5z"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9.5 14.5l5-5"/><path d="M11.5 6.8l1.2-1.2a3.8 3.8 0 0 1 5.4 5.4l-1.2 1.2"/><path d="M12.5 17.2l-1.2 1.2a3.8 3.8 0 0 1-5.4-5.4l1.2-1.2"/></svg>',
+    system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>'
+  };
 
   var PLAT = {
     weibo: function (u, t) { return 'https://service.weibo.com/share/share.php?url=' + encodeURIComponent(u) + '&title=' + encodeURIComponent(t); },
     x: function (u, t) { return 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(u) + '&text=' + encodeURIComponent(t); },
-    facebook: function (u, t) { return 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(u); },
-    linkedin: function (u, t) { return 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(u); }
+    facebook: function (u) { return 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(u); },
+    linkedin: function (u) { return 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(u); }
   };
+
+  var BTNS = [
+    { act: 'wechat', label: '微信', icon: ICON.wechat, cls: 'sh-wechat' },
+    { act: 'moments', label: '朋友圈', icon: ICON.moments, cls: 'sh-moments' },
+    { act: 'weibo', label: '微博', icon: ICON.weibo, cls: 'sh-weibo' },
+    { act: 'x', label: 'X', icon: ICON.x, cls: 'sh-x' },
+    { act: 'facebook', label: 'Facebook', icon: ICON.facebook, cls: 'sh-facebook' },
+    { act: 'linkedin', label: 'LinkedIn', icon: ICON.linkedin, cls: 'sh-linkedin' },
+    { act: 'copy', label: '复制链接', icon: ICON.copy, cls: 'sh-copy' },
+    { act: 'system', label: '更多分享', icon: ICON.system, cls: 'sh-system' }
+  ];
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -21,113 +38,17 @@
 
   function bar(data) {
     var p = encodeURIComponent(JSON.stringify(data));
-    var cap = data.kind === 'issue' ? '把这一期分享出去' : '分享这一条';
-    return '<div class="share-box">' +
-      '<div class="share-cap">' + esc(cap) + '</div>' +
-      '<div class="share-row" data-share="' + p + '">' +
-        '<button type="button" class="sh-btn sh-primary" data-act="poster">大字海报</button>' +
-        '<button type="button" class="sh-btn" data-act="copy">复制链接</button>' +
-        '<button type="button" class="sh-btn" data-act="weibo">微博</button>' +
-        '<button type="button" class="sh-btn" data-act="x">X</button>' +
-        '<button type="button" class="sh-btn" data-act="facebook">Facebook</button>' +
-        '<button type="button" class="sh-btn" data-act="linkedin">LinkedIn</button>' +
-        '<button type="button" class="sh-btn" data-act="system">更多</button>' +
-      '</div></div>';
+    var cap = data.kind === 'issue' ? '分享这一期' : '分享这一条';
+    var html = '<div class="share-box"><div class="share-cap">' + esc(cap) + '</div><div class="share-row" data-share="' + p + '">';
+    BTNS.forEach(function (b) {
+      html += '<button type="button" class="sh-ico ' + b.cls + '" data-act="' + b.act +
+        '" title="' + esc(b.label) + '" aria-label="' + esc(b.label) + '">' + b.icon + '</button>';
+    });
+    return html + '</div></div>';
   }
 
-  function wrap(ctx, text, maxW, size, weight, maxLines) {
-    ctx.font = (weight || '700') + ' ' + size + 'px ' + FONT;
-    var chars = String(text || '').split('');
-    var lines = [], line = '';
-    for (var i = 0; i < chars.length; i++) {
-      var ch = chars[i];
-      if (line && ctx.measureText(line + ch).width > maxW) { lines.push(line); line = ch; }
-      else { line += ch; }
-    }
-    if (line) lines.push(line);
-    if (maxLines && lines.length > maxLines) {
-      lines = lines.slice(0, maxLines);
-      var last = lines[maxLines - 1];
-      while (last.length && ctx.measureText(last + '…').width > maxW) last = last.slice(0, -1);
-      lines[maxLines - 1] = last + '…';
-    }
-    return lines;
-  }
-
-  function makePoster(data) {
-    var W = 750, pad = 64;
-    var m = document.createElement('canvas').getContext('2d');
-    var titleLines = wrap(m, data.title, W - pad * 2, 66, '700', 5);
-    var quoteText = data.quote ? '「' + data.quote + '」' : '';
-    var quoteLines = quoteText ? wrap(m, quoteText, W - pad * 2 - 30, 42, '600', 5) : [];
-
-    var yTitle = 172;
-    var titleH = titleLines.length * 88;
-    var yQuote = yTitle + titleH + 34;
-    var quoteH = quoteLines.length ? quoteLines.length * 64 + 74 : 0;
-    var H = Math.max(1000, Math.ceil(yQuote + quoteH + 170));
-
-    var dpr = 2;
-    var cv = document.createElement('canvas');
-    cv.width = W * dpr; cv.height = H * dpr;
-    var ctx = cv.getContext('2d');
-    ctx.scale(dpr, dpr);
-
-    ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = ACCENT; ctx.fillRect(0, 0, W, 12); ctx.fillRect(0, H - 12, W, 12);
-
-    ctx.fillStyle = ACCENT;
-    ctx.beginPath(); ctx.arc(pad + 16, 76, 17, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-    ctx.font = '700 19px ' + FONT; ctx.fillText('枣', pad + 16, 83);
-    ctx.textAlign = 'left';
-    ctx.fillStyle = ACCENT; ctx.font = '700 31px ' + FONT;
-    ctx.fillText('每日枣报', pad + 46, 87);
-    ctx.textAlign = 'right'; ctx.fillStyle = '#8a857b'; ctx.font = '400 24px ' + FONT;
-    ctx.fillText(String(data.date || '').replace(/-/g, '.'), W - pad, 85);
-    ctx.textAlign = 'left';
-
-    ctx.strokeStyle = '#e6e2d9'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(pad, 116); ctx.lineTo(W - pad, 116); ctx.stroke();
-
-    ctx.fillStyle = ACCENT; ctx.font = '600 23px ' + FONT;
-    if (data.kind === 'item' && data.no) {
-      ctx.fillText('第 ' + (data.no < 10 ? '0' + data.no : data.no) + ' 条 · 枣评', pad, yTitle - 44);
-    } else {
-      ctx.fillText('今 日 要 闻', pad, yTitle - 44);
-    }
-
-    ctx.fillStyle = INK; ctx.font = '700 66px ' + FONT;
-    var yy = yTitle;
-    titleLines.forEach(function (ln) { ctx.fillText(ln, pad, yy); yy += 88; });
-
-    if (quoteLines.length) {
-      var by = yQuote - 44;
-      ctx.fillStyle = '#f7ece9';
-      ctx.fillRect(pad - 10, by, W - (pad - 10) * 2, quoteLines.length * 64 + 76);
-      ctx.fillStyle = ACCENT;
-      ctx.fillRect(pad - 10, by, 6, quoteLines.length * 64 + 76);
-      ctx.fillStyle = ACCENT; ctx.font = '600 42px ' + FONT;
-      var qy = yQuote;
-      quoteLines.forEach(function (ln) { ctx.fillText(ln, pad + 16, qy); qy += 64; });
-    }
-
-    var fy = H - 72;
-    ctx.fillStyle = '#8a857b'; ctx.font = '400 24px ' + FONT;
-    ctx.fillText('zaobao.sdgzu.edu.kg', pad, fy);
-    ctx.textAlign = 'right'; ctx.fillStyle = ACCENT; ctx.font = '600 24px ' + FONT;
-    ctx.fillText('让信息抵达 · 让思想发生', W - pad, fy);
-    ctx.textAlign = 'left';
-
-    return cv.toDataURL('image/png');
-  }
-
-  function toast(msg) {
-    var el = document.createElement('div');
-    el.className = 'sh-toast';
-    el.textContent = msg;
-    document.body.appendChild(el);
-    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 1800);
+  function inWeChat() {
+    return /MicroMessenger/i.test(navigator.userAgent || '');
   }
 
   function copy(text) {
@@ -148,24 +69,35 @@
     document.body.removeChild(ta);
   }
 
-  function showPoster(data) {
-    var img = makePoster(data);
+  function toast(msg) {
+    var el = document.createElement('div');
+    el.className = 'sh-toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 2000);
+  }
+
+  function showGuide(html) {
     var ov = document.createElement('div');
     ov.className = 'share-overlay';
-    ov.innerHTML = '<div class="share-modal">' +
-      '<div class="share-modal-hd"><b>大字海报</b><button type="button" class="share-x" data-close>✕</button></div>' +
-      '<img class="share-poster" src="' + img + '" alt="每日枣报分享海报">' +
-      '<p class="share-hint">长按图片保存到相册，即可发微信、朋友圈或任意平台</p>' +
-      '<div class="share-modal-ft">' +
-        '<a class="sh-dl" href="' + img + '" download="每日枣报-' + esc(data.date || '') + '.png">下载图片</a>' +
-        '<button type="button" class="sh-close" data-close>关闭</button>' +
-      '</div></div>';
+    ov.innerHTML = '<div class="wx-guide">' + html +
+      '<button type="button" class="sh-close" data-close>知道了</button></div>';
     document.body.appendChild(ov);
     ov.addEventListener('click', function (e) {
       if (e.target === ov || (e.target.closest && e.target.closest('[data-close]'))) {
         if (ov.parentNode) ov.parentNode.removeChild(ov);
       }
     });
+  }
+
+  function showWechatGuide(kind) {
+    var tip = kind === 'moments' ? '选择「分享到朋友圈」' : '选择「发送给朋友」';
+    showGuide('<div class="wx-guide-arrow">↗</div><p>点击右上角 <b>···</b><br>' + tip + '</p>');
+  }
+
+  function showBrowserGuide(label) {
+    showGuide('<div class="wx-guide-arrow">↗</div><p>微信内无法打开 <b>' + esc(label) +
+      '</b><br>请点右上角 <b>···</b><br>选择「在浏览器打开」后再分享</p>');
   }
 
   document.addEventListener('click', function (e) {
@@ -182,16 +114,43 @@
       : ('每日枣报｜' + data.title);
     var act = btn.getAttribute('data-act');
 
-    if (act === 'poster') { showPoster(data); }
-    else if (act === 'copy') { copy(url).then(function () { toast('链接已复制'); }); }
-    else if (act === 'system') {
+    if (act === 'wechat' || act === 'moments') {
+      if (inWeChat()) {
+        showWechatGuide(act);
+      } else if (navigator.share) {
+        navigator.share({ title: title, url: url }).catch(function () {});
+      } else {
+        copy(url).then(function () {
+          toast(act === 'moments' ? '链接已复制，打开微信发到朋友圈' : '链接已复制，打开微信发送给好友');
+        });
+      }
+      return;
+    }
+
+    if (act === 'copy') {
+      copy(url).then(function () { toast('链接已复制'); });
+      return;
+    }
+
+    if (act === 'system') {
       if (navigator.share) {
         navigator.share({ title: title, url: url }).catch(function () {});
       } else {
         copy(url).then(function () { toast('链接已复制，可粘贴分享'); });
       }
+      return;
     }
-    else if (PLAT[act]) { window.open(PLAT[act](url, title), '_blank', 'noopener,width=680,height=560'); }
+
+    if (PLAT[act]) {
+      if (inWeChat()) {
+        var label = BTNS.filter(function (b) { return b.act === act; })[0];
+        showBrowserGuide(label ? label.label : '该平台');
+        return;
+      }
+      var target = PLAT[act](url, title);
+      var w = window.open(target, '_blank', 'noopener,width=680,height=560');
+      if (!w) location.href = target;
+    }
   });
 
   window.ZaoShare = { bar: bar };
