@@ -478,6 +478,13 @@ export default {
     if (path === '/sitemap.xml') return handleSitemap(env, url);
     if (path === '/robots.txt') return handleRobots(url);
 
+    // Google Search Console 域名所有权验证：直接返回，避免静态资源对 .html 后缀做 307 跳转
+    if (path === '/google7f159c18a03528a5.html') {
+      return new Response('google-site-verification: google7f159c18a03528a5.html', {
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=86400' }
+      });
+    }
+
     if (path === '/api/health') return json({ ok: true, kv: !!env.ZAOBAO_KV });
 
     if (path === '/api/likes' && (request.method === 'GET' || request.method === 'POST')) {
