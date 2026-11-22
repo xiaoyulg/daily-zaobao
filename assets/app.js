@@ -75,6 +75,71 @@
     return '<div class="sources sources-row">' + inner + '</div>';
   }
 
+  // 正文来源就地链接：把 facts 里出现的来源名替换成指向原文的链接。
+  // 只做呈现，不改动任何内容字段；同一别名只链接首次，避免链接过密。
+  var EXTRA_SOURCE_ALIAS = { '工信部': ['工业和信息化部'] };
+
+  function sourceAliases(s) {
+    var name = (typeof s === 'string') ? s : ((s && (s.name || s.title)) || '');
+    var url = (s && typeof s === 'object' && s.url) ? s.url : sourceURL(name);
+    var list = [];
+    function add(a) {
+      a = String(a || '').trim();
+      if (a && list.indexOf(a) < 0) list.push(a);
+    }
+    add(name);
+    var main = name.replace(/[（(][^）)]*[）)]/g, '').replace(/[《》<>]/g, '').trim();
+    add(main);
+    (name.match(/[（(]([^）)]*)[）)]/g) || []).forEach(function (p) {
+      var inner = p.replace(/^[（(]|[）)]$/g, '');
+      inner.split(/[，,、\s\/|]+/).forEach(function (tok) {
+        tok = tok.trim();
+        if (/^[A-Za-z][A-Za-z.\- ]{1,24}$/.test(tok)) add(tok);
+      });
+    });
+    (name.match(/《[^》]+》/g) || []).forEach(function (b) { add(b.replace(/[《》]/g, '')); });
+    (EXTRA_SOURCE_ALIAS[main] || []).forEach(add);
+    return list.map(function (a) { return { alias: a, url: url }; });
+  }
+
+  function linkifyFacts(facts, sources) {
+    var raw = String(facts || '');
+    if (!raw || !sources || !sources.length) return esc(raw);
+    var seen = {}, list = [];
+    sources.forEach(function (s) {
+      if (!s) return;
+      sourceAliases(s).forEach(function (p) {
+        if (seen[p.alias]) return;
+        seen[p.alias] = 1; list.push(p);
+      });
+    });
+    list.sort(function (a, b) { return b.alias.length - a.alias.length; });
+    if (!list.length) return esc(raw);
+    var re = new RegExp(list.map(function (p) {
+      return p.alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }).join('|'), 'g');
+    var out = '', last = 0, linked = {}, m;
+    while ((m = re.exec(raw)) !== null) {
+      var alias = m[0], target = null;
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].alias === alias) { target = list[i].url; break; }
+      }
+      var ascii = /^[\x20-\x7E]+$/.test(alias);
+      var prev = m.index > 0 ? raw.charAt(m.index - 1) : '';
+      var next = raw.charAt(m.index + alias.length) || '';
+      var bounded = !ascii || (!/[A-Za-z0-9]/.test(prev) && !/[A-Za-z0-9]/.test(next));
+      if (target && bounded && !linked[alias]) {
+        linked[alias] = 1;
+        out += esc(raw.slice(last, m.index)) +
+          '<a class="src-inline" href="' + esc(target) + '" target="_blank" rel="noopener noreferrer" title="查看来源：' + esc(alias) + '">' + esc(alias) + '</a>';
+      } else {
+        out += esc(raw.slice(last, m.index + alias.length));
+      }
+      last = m.index + alias.length;
+    }
+    return out + esc(raw.slice(last));
+  }
+
   function loadJSON(url) {
     return fetch(url, { cache: 'no-store' }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url);
@@ -195,10 +260,10 @@
         html += '</div>';
       }
       html += '<div class="item-body">';
-      if (it.facts) html += '<p class="facts">' + esc(it.facts) + '</p>';
+      if (it.facts) html += '<p class="facts">' + linkifyFacts(it.facts, it.sources) + '</p>';
       if (it.comment) {
         html += '<div class="comment"><span class="comment-label">' + (isLast ? '轻松收尾' : '枣 评 · 吐槽') + '</span>';
-        html += '<div>' + esc(it.comment) + '</div>';
+        html += '<div class="comment-text">' + esc(it.comment) + '</div>';
         if (it.quote) html += '<div class="quote">' + esc(it.quote) + '</div>';
         html += '</div>';
       }
@@ -218,13 +283,13 @@
         html += '<div class="edu-item">';
         html += '<div class="edu-head"><span class="edu-region">' + esc(it.region || '资讯') + '</span>';
         html += '<span class="edu-title">' + esc(it.headline || it.title || '') + '</span></div>';
-        if (it.facts) html += '<p class="edu-facts">' + esc(it.facts) + '</p>';
+        if (it.facts) html += '<p class="edu-facts">' + linkifyFacts(it.facts, it.sources) + '</p>';
         html += renderSources(it.sources);
         html += '</div>';
       });
       if (edu.analysis) {
         html += '<div class="edu-analysis"><span class="comment-label">汇 总 点 评</span>';
-        html += '<div>' + esc(edu.analysis) + '</div>';
+        html += '<div class="comment-text">' + esc(edu.analysis) + '</div>';
         if (edu.quote) html += '<div class="quote">' + esc(edu.quote) + '</div>';
         html += '</div>';
       }
@@ -841,7 +906,7 @@
       });
       html += '</div>';
       html += '<h2><a href="#/' + esc(r.date) + '">' + esc(r.title) + '</a></h2>';
-      if (r.facts) html += '<p class="facts">' + esc(r.facts) + '</p>';
+      if (r.facts) html += '<p class="facts">' + linkifyFacts(r.facts, r.sources) + '</p>';
       if (r.comment) html += '<div class="comment"><div>' + esc(r.comment) + '</div></div>';
       if (r.quote) html += '<div class="quote">' + esc(r.quote) + '</div>';
       html += renderSources(r.sources);
