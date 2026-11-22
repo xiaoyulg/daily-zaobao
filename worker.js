@@ -646,6 +646,8 @@ export default {
   },
 
   // 定时推送：每天北京时间 12:45（UTC 04:45）通知搜索引擎有新内容
+  // 说明：Cloudflare Cron 按 UTC 执行；本任务与《每日枣报》生成任务（北京时间 12:45）同时刻，
+  // 保证"内容已发布 → 立刻推送收录"的先后顺序。改时间时需同步修改 wrangler.jsonc 的 crons。
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
       pushIndexNow(env).then(function (r) {
