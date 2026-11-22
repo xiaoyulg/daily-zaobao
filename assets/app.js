@@ -319,8 +319,9 @@
   }
 
   function buildTagIndex(all) {
-    var map = {}, co = {};
+    var map = {}, co = {}, coIssue = {};
     (all || []).forEach(function (issue) {
+      var issueTags = {};
       (issue.items || []).forEach(function (it) {
         var tags = (it.tags || []).filter(Boolean);
         var rec = {
@@ -331,6 +332,7 @@
         tags.forEach(function (t) {
           if (!map[t]) map[t] = [];
           map[t].push(rec);
+          issueTags[t] = 1;
         });
         for (var i = 0; i < tags.length; i++) {
           for (var j = i + 1; j < tags.length; j++) {
@@ -340,28 +342,416 @@
           }
         }
       });
+      // 期级关联：同一期出现过的标签之间建立弱连接，让单期也能串成议题网
+      var within = Object.keys(issueTags);
+      for (var a = 0; a < within.length; a++) {
+        for (var b = a + 1; b < within.length; b++) {
+          var p = [within[a], within[b]].sort().join('\u0001');
+          coIssue[p] = (coIssue[p] || 0) + 1;
+        }
+      }
     });
-    return { map: map, co: co };
+    return { map: map, co: co, coIssue: coIssue };
   }
 
-  function renderTagNet(all) {
-    var idx = buildTagIndex(all);
+  // ---------- 标签知识图谱：原生 Canvas 力导向，无外部依赖 ----------
+  var GRAPH_PALETTE = ['#9c2b25', '#2f6f8f', '#6b7f34', '#8a5a9c', '#b8772a',
+    '#3f7d70', '#a34a6b', '#4f6b9c', '#7a6a4f', '#5b7fa8'];
+
+  function graphColor(group) {
+    return GRAPH_PALETTE[((group % GRAPH_PALETTE.length) + GRAPH_PALETTE.length) % GRAPH_PALETTE.length];
+  }
+
+  function buildGraphData(idx) {
+    var nodes = Object.keys(idx.map).map(function (id) {
+      return { id: id, label: id, count: idx.map[id].length,
+        x: 0, y: 0, vx: 0, vy: 0, r: 0, group: 0, deg: 0 };
+    });
+    var byId = {};
+    nodes.forEach(function (n, i) { byId[n.id] = n; n.group = i; });
+    var links = [], strongKeys = {};
+    Object.keys(idx.co).forEach(function (k) {
+      var p = k.split('\u0001');
+      var a = byId[p[0]], b = byId[p[1]];
+      if (!a || !b) return;
+      links.push({ a: a, b: b, n: idx.co[k], weak: false });
+      strongKeys[k] = 1;
+      a.deg += idx.co[k];
+      b.deg += idx.co[k];
+    });
+
+    // 期级弱关联：每个节点只保留最强的几组，避免退化成完全图
+    var weakAll = Object.keys(idx.coIssue || {}).map(function (k) {
+      var p = k.split('\u0001');
+      return { a: byId[p[0]], b: byId[p[1]], n: idx.coIssue[k] };
+    }).filter(function (l) { return l.a && l.b; });
+    var perNode = {};
+    weakAll.forEach(function (l) {
+      if (perNode[l.a.id]) perNode[l.a.id].push(l); else perNode[l.a.id] = [l];
+      if (perNode[l.b.id]) perNode[l.b.id].push(l); else perNode[l.b.id] = [l];
+    });
+    var chosen = {};
+    Object.keys(perNode).forEach(function (id) {
+      perNode[id].sort(function (x, y) { return y.n - x.n || x.a.id.localeCompare(y.a.id); })
+        .slice(0, 3)
+        .forEach(function (l) {
+          var k = [l.a.id, l.b.id].sort().join('\u0001');
+          if (!strongKeys[k]) chosen[k] = l;
+        });
+    });
+    Object.keys(chosen).forEach(function (k) {
+      var l = chosen[k];
+      links.push({ a: l.a, b: l.b, n: l.n, weak: true });
+    });
+
+    // 轻量标签传播：只用强边做社区聚类，弱边不参与，避免大量期级关联把整图染成一色
+    for (var round = 0; round < 8; round++) {
+      var changed = false;
+      nodes.forEach(function (n) {
+        var score = {};
+        score[n.group] = 0.6;
+        links.forEach(function (l) {
+          if (l.weak) return;
+          var other = l.a === n ? l.b : (l.b === n ? l.a : null);
+          if (other) score[other.group] = (score[other.group] || 0) + l.n;
+        });
+        var best = n.group, bestScore = score[best] || 0;
+        Object.keys(score).forEach(function (g) {
+          if (score[g] > bestScore) { bestScore = score[g]; best = parseInt(g, 10); }
+        });
+        if (best !== n.group) { n.group = best; changed = true; }
+      });
+      if (!changed) break;
+    }
+
+    var adj = {};
+    nodes.forEach(function (n) { adj[n.id] = {}; });
+    links.forEach(function (l) {
+      adj[l.a.id][l.b.id] = l.n;
+      adj[l.b.id][l.a.id] = l.n;
+    });
+    return { nodes: nodes, links: links, byId: byId, adj: adj };
+  }
+
+  function mountTagGraph(idx) {
+    var canvas = document.getElementById('tag-graph');
+    if (!canvas || !canvas.getContext) return;
+    var stage = document.getElementById('graph-stage');
+    var tip = document.getElementById('graph-tip');
+    var ctx = canvas.getContext('2d');
+    var data = buildGraphData(idx);
+    var dpr = window.devicePixelRatio || 1;
+    var W = 0, H = 0, scale = 1, tx = 0, ty = 0;
+    var alpha = 0, raf = null;
+    var hover = null, dragNode = null, panning = false, lastPointer = null;
+    var gestureMoved = false, downAt = null;
+    var minLink = 1, showWeak = true;
+    var maxNodes = 90;
+
+    // 长周期归档后限制节点数，保证移动端仍然流畅
+    if (data.nodes.length > maxNodes) {
+      var keep = data.nodes.slice().sort(function (a, b) {
+        return b.count - a.count || a.id.localeCompare(b.id);
+      }).slice(0, maxNodes);
+      var keepIds = {};
+      keep.forEach(function (n) { keepIds[n.id] = 1; });
+      data.nodes = keep;
+      data.links = data.links.filter(function (l) { return keepIds[l.a.id] && keepIds[l.b.id]; });
+      var kept = {};
+      keep.forEach(function (n) { kept[n.id] = {}; });
+      data.links.forEach(function (l) { kept[l.a.id][l.b.id] = l.n; kept[l.b.id][l.a.id] = l.n; });
+      data.adj = kept;
+    }
+
+    function resize() {
+      var rect = canvas.getBoundingClientRect();
+      W = Math.max(320, rect.width);
+      H = Math.max(280, rect.height);
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      var R = Math.min(W, H) * 0.34;
+      data.nodes.forEach(function (n, i) {
+        if (!n.x && !n.y) {
+          var ang = (i / Math.max(1, data.nodes.length)) * Math.PI * 2;
+          var wobble = 0.72 + 0.28 * Math.abs(Math.sin(i * 7.13));
+          n.x = Math.cos(ang) * R * wobble;
+          n.y = Math.sin(ang) * R * wobble;
+        }
+        n.r = 4.5 + Math.sqrt(n.count) * 2.8;
+      });
+      draw();
+    }
+
+    function isNeighbor(a, b) {
+      return !!(a && b && data.adj[a.id] && data.adj[a.id][b.id]);
+    }
+
+    function draw() {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      ctx.save();
+      ctx.translate(W / 2 + tx, H / 2 + ty);
+      ctx.scale(scale, scale);
+
+      data.links.forEach(function (l) {
+        if (l.weak ? !showWeak : l.n < minLink) return;
+        var active = hover && (l.a === hover || l.b === hover);
+        ctx.strokeStyle = active ? 'rgba(156,43,37,0.66)'
+          : (l.weak ? 'rgba(110,105,95,0.10)' : 'rgba(110,105,95,0.20)');
+        ctx.lineWidth = active ? 1.8 : (l.weak ? 0.6 : Math.min(3, 0.5 + l.n * 0.6));
+        ctx.beginPath();
+        ctx.moveTo(l.a.x, l.a.y);
+        ctx.lineTo(l.b.x, l.b.y);
+        ctx.stroke();
+      });
+
+      data.nodes.forEach(function (n) {
+        var dim = hover && n !== hover && !isNeighbor(n, hover);
+        ctx.globalAlpha = dim ? 0.2 : 1;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.fillStyle = graphColor(n.group);
+        ctx.fill();
+        ctx.lineWidth = n === hover ? 2.5 : 1.2;
+        ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      });
+
+      ctx.font = '12px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      data.nodes.forEach(function (n) {
+        if (hover && n !== hover && !isNeighbor(n, hover) && n.count < 3) return;
+        ctx.fillStyle = n === hover ? '#1c1a17' : '#4a463f';
+        ctx.fillText(n.label, n.x, n.y + n.r + 11);
+      });
+      ctx.restore();
+    }
+
+    function tick() {
+      if (alpha < 0.006 && !dragNode) { raf = null; return; }
+      var nodes = data.nodes;
+      var k = Math.sqrt((W * H) / Math.max(1, nodes.length)) * 0.5;
+      for (var i = 0; i < nodes.length; i++) {
+        for (var j = i + 1; j < nodes.length; j++) {
+          var dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y;
+          var d2 = dx * dx + dy * dy || 1;
+          var d = Math.sqrt(d2);
+          var f = (k * k) / d2 * alpha;
+          var fx = dx / d * f, fy = dy / d * f;
+          nodes[i].vx -= fx; nodes[i].vy -= fy;
+          nodes[j].vx += fx; nodes[j].vy += fy;
+        }
+      }
+      data.links.forEach(function (l) {
+        if (l.weak ? !showWeak : l.n < minLink) return;
+        var dx = l.b.x - l.a.x, dy = l.b.y - l.a.y;
+        var d = Math.sqrt(dx * dx + dy * dy) || 1;
+        var rest = l.weak ? k * 2.6 : k * (1.75 - Math.min(0.85, l.n * 0.2));
+        var f = (d - rest) * (l.weak ? 0.006 : 0.04) * alpha;
+        var fx = dx / d * f, fy = dy / d * f;
+        l.a.vx += fx; l.a.vy += fy;
+        l.b.vx -= fx; l.b.vy -= fy;
+      });
+      nodes.forEach(function (n) {
+        if (n === dragNode) { n.vx = n.vy = 0; return; }
+        n.vx -= n.x * 0.0022 * alpha;
+        n.vy -= n.y * 0.0022 * alpha;
+        n.vx *= 0.86; n.vy *= 0.86;
+        n.x += Math.max(-14, Math.min(14, n.vx));
+        n.y += Math.max(-14, Math.min(14, n.vy));
+      });
+      alpha *= 0.983;
+      draw();
+      raf = requestAnimationFrame(tick);
+    }
+
+    function reheat(v) {
+      alpha = Math.max(alpha, v || 0.3);
+      if (raf === null) raf = requestAnimationFrame(tick);
+    }
+
+    function point(ev) {
+      var r = canvas.getBoundingClientRect();
+      var src = ev.touches && ev.touches.length ? ev.touches[0] : ev;
+      return {
+        x: (src.clientX - r.left - W / 2 - tx) / scale,
+        y: (src.clientY - r.top - H / 2 - ty) / scale,
+        sx: src.clientX - r.left,
+        sy: src.clientY - r.top
+      };
+    }
+
+    function hit(p) {
+      for (var i = data.nodes.length - 1; i >= 0; i--) {
+        var n = data.nodes[i];
+        var dx = p.x - n.x, dy = p.y - n.y;
+        if (dx * dx + dy * dy <= (n.r + 7) * (n.r + 7)) return n;
+      }
+      return null;
+    }
+
+    function showTip(n, p) {
+      if (!tip) return;
+      if (!n) { tip.hidden = true; return; }
+      var near = Object.keys(data.adj[n.id] || {}).sort(function (a, b) {
+        return data.adj[n.id][b] - data.adj[n.id][a];
+      }).slice(0, 3).map(function (t) { return esc(t); }).join('、');
+      tip.innerHTML = '<b>' + esc(n.label) + '</b><span>出现 ' + n.count + ' 次 · 关联 ' +
+        Object.keys(data.adj[n.id] || {}).length + ' 个标签</span>' +
+        (near ? '<em>强关联：' + near + '</em>' : '');
+      tip.hidden = false;
+      tip.style.left = Math.max(8, Math.min(W - 200, p.sx + 14)) + 'px';
+      tip.style.top = Math.max(8, p.sy - 12) + 'px';
+    }
+
+    function onMove(ev) {
+      var p = point(ev);
+      if (downAt && (Math.abs(p.sx - downAt.x) > 5 || Math.abs(p.sy - downAt.y) > 5)) {
+        gestureMoved = true;
+      }
+      if (dragNode) {
+        dragNode.x = p.x; dragNode.y = p.y;
+        dragNode.vx = dragNode.vy = 0;
+        reheat(0.12); draw();
+        return;
+      }
+      if (panning && lastPointer) {
+        tx += p.sx - lastPointer.x;
+        ty += p.sy - lastPointer.y;
+        lastPointer = { x: p.sx, y: p.sy };
+        draw();
+        return;
+      }
+      var n = hit(p);
+      if (n !== hover) {
+        hover = n;
+        canvas.style.cursor = n ? 'pointer' : 'grab';
+        draw();
+      }
+      showTip(n, p);
+    }
+
+    function startGesture(ev) {
+      var p = point(ev);
+      downAt = { x: p.sx, y: p.sy };
+      gestureMoved = false;
+      dragNode = hit(p);
+      if (!dragNode) { panning = true; lastPointer = { x: p.sx, y: p.sy }; }
+    }
+
+    function endGesture() {
+      dragNode = null; panning = false; lastPointer = null; downAt = null;
+      canvas.style.cursor = hover ? 'pointer' : 'grab';
+      reheat(0.16);
+    }
+
+    canvas.addEventListener('mousemove', onMove);
+    canvas.addEventListener('mouseleave', function () {
+      hover = null; showTip(null); draw();
+    });
+    canvas.addEventListener('mousedown', startGesture);
+    window.addEventListener('mouseup', endGesture);
+    canvas.addEventListener('click', function (ev) {
+      if (gestureMoved) return;
+      var n = hit(point(ev));
+      if (n) location.hash = '#/tag/' + encodeURIComponent(n.id);
+    });
+    canvas.addEventListener('wheel', function (ev) {
+      ev.preventDefault();
+      var p = point(ev);
+      var next = Math.max(0.55, Math.min(2.4, scale * (ev.deltaY > 0 ? 0.9 : 1.1)));
+      tx = p.sx - W / 2 - (p.x * next);
+      ty = p.sy - H / 2 - (p.y * next);
+      scale = next;
+      draw();
+    }, { passive: false });
+    canvas.addEventListener('touchstart', function (ev) {
+      startGesture(ev);
+      ev.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchmove', function (ev) {
+      onMove(ev);
+      ev.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchend', function () {
+      if (hover && !gestureMoved) location.hash = '#/tag/' + encodeURIComponent(hover.id);
+      hover = null; showTip(null);
+      endGesture(); draw();
+    });
+
+    var controls = document.getElementById('graph-controls');
+    if (controls) {
+      controls.addEventListener('change', function (ev) {
+        if (ev.target && ev.target.id === 'graph-minlink') {
+          minLink = parseInt(ev.target.value, 10) || 1;
+          reheat(0.45);
+        } else if (ev.target && ev.target.id === 'graph-weak') {
+          showWeak = !!ev.target.checked;
+          reheat(0.45);
+        }
+      });
+      controls.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('[data-graph-action]') : null;
+        if (!btn || btn.getAttribute('data-graph-action') !== 'reset') return;
+        scale = 1; tx = 0; ty = 0; minLink = 1; showWeak = true;
+        var sel = document.getElementById('graph-minlink');
+        if (sel) sel.value = '1';
+        var wk = document.getElementById('graph-weak');
+        if (wk) wk.checked = true;
+        data.nodes.forEach(function (n) { n.vx = n.vy = 0; });
+        reheat(0.8);
+      });
+    }
+
+    if (window.ResizeObserver && stage) {
+      new ResizeObserver(resize).observe(stage);
+    } else {
+      window.addEventListener('resize', resize);
+    }
+    resize();
+    reheat(1);
+  }
+
+  function renderTagNet(all, idx) {
+    idx = idx || buildTagIndex(all);
     var tags = Object.keys(idx.map).sort(function (a, b) {
       return idx.map[b].length - idx.map[a].length || a.localeCompare(b);
     });
     var itemCount = (all || []).reduce(function (n, x) { return n + (x.items || []).length; }, 0);
-    var html = '<div class="archive-head"><h1>标签网</h1><p>共 ' + tags.length + ' 个标签 · ' + itemCount + ' 条新闻 · 点击标签看跨期聚合</p></div>';
-    html += '<section class="tag-cloud">';
+    var html = '<div class="archive-head"><h1>标签网</h1><p>共 ' + tags.length + ' 个标签 · ' +
+      itemCount + ' 条新闻 · ' + Object.keys(idx.co).length + ' 组条内共现 · ' +
+      Object.keys(idx.coIssue || {}).length + ' 组期级关联</p></div>';
+
+    html += '<section class="graph-card">' +
+      '<div class="graph-head"><div><h2>知识图谱</h2>' +
+      '<p>节点是标签；粗线＝同一条新闻里共现，细线＝同一期里共同出现；同色代表强关联主题簇。鼠标悬停看邻域，点击节点看跨期聚合。</p></div>' +
+      '<div class="graph-tools" id="graph-controls">' +
+      '<label class="graph-check"><input type="checkbox" id="graph-weak" checked> 期级关联</label>' +
+      '<label>最少共现 <select id="graph-minlink" aria-label="最少共现次数">' +
+      '<option value="1">1 次</option><option value="2">2 次</option><option value="3">3 次</option>' +
+      '</select></label><button type="button" data-graph-action="reset">重置视图</button></div></div>' +
+      '<div class="graph-stage" id="graph-stage">' +
+      '<canvas id="tag-graph" role="img" aria-label="标签共现关系图谱，可点击节点查看该标签的跨期聚合">' +
+      '你的浏览器不支持 Canvas，请查看下方的共现列表。</canvas>' +
+      '<div class="graph-tip" id="graph-tip" hidden></div>' +
+      '<div class="graph-hint">拖动节点 · 空白处平移 · 滚轮缩放 · 点击标签查看跨期聚合</div>' +
+      '</div></section>';
+
+    html += '<details class="tag-cloud-details" open><summary>按频次浏览（' + tags.length + '）</summary><section class="tag-cloud">';
     tags.forEach(function (t) {
-      html += '<a class="tag-cloud-item" href="#/tag/' + encodeURIComponent(t) + '">' + esc(t) + '<sup>' + idx.map[t].length + '</sup></a>';
+      html += '<a class="tag-cloud-item" href="#/tag/' + encodeURIComponent(t) + '">' +
+        esc(t) + '<sup>' + idx.map[t].length + '</sup></a>';
     });
-    html += '</section>';
+    html += '</section></details>';
+
     var pairs = Object.keys(idx.co).map(function (k) {
       var p = k.split('\u0001');
       return { a: p[0], b: p[1], n: idx.co[k] };
     }).sort(function (x, y) { return y.n - x.n; }).slice(0, 12);
     if (pairs.length) {
-      html += '<section class="tag-links"><h2>标签共现 · 知识连线</h2><ul>';
+      html += '<section class="tag-links"><h2>最强共现 · TOP 12</h2><ul>';
       pairs.forEach(function (p) {
         html += '<li><a href="#/tag/' + encodeURIComponent(p.a) + '">' + esc(p.a) + '</a><span> × </span>' +
           '<a href="#/tag/' + encodeURIComponent(p.b) + '">' + esc(p.b) + '</a><b>' + p.n + ' 条</b></li>';
@@ -437,7 +827,9 @@
       getAllIssues(manifest).then(function (all) {
         if (hash === 'tags') {
           document.title = '标签网 · 每日枣报';
-          app.innerHTML = renderTagNet(all);
+          var tagIdx = buildTagIndex(all);
+          app.innerHTML = renderTagNet(all, tagIdx);
+          mountTagGraph(tagIdx);
         } else {
           var tag = hash.slice(4);
           document.title = '标签 ' + tag + ' · 每日枣报';
