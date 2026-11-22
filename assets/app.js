@@ -61,7 +61,8 @@
 
     var items = issue.items || [];
     items.forEach(function (it, n) {
-      html += '<section class="item">';
+      var isLast = (n === items.length - 1);
+      html += '<section class="item' + (isLast ? ' item-light' : '') + '">';
       html += '<div class="item-head"><span class="item-no">' + pad(n + 1) + '</span>';
       html += '<h2 class="item-title">' + esc(it.title) + '</h2></div>';
       if (it.tags && it.tags.length) {
@@ -72,7 +73,7 @@
       html += '<div class="item-body">';
       if (it.facts) html += '<p class="facts">' + esc(it.facts) + '</p>';
       if (it.comment) {
-        html += '<div class="comment"><span class="comment-label">枣 评</span>';
+        html += '<div class="comment"><span class="comment-label">' + (isLast ? '轻松收尾' : '枣 评 · 吐槽') + '</span>';
         html += '<div>' + esc(it.comment) + '</div>';
         if (it.quote) html += '<div class="quote">' + esc(it.quote) + '</div>';
         html += '</div>';
