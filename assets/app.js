@@ -177,6 +177,11 @@
       html += '</ol></section>';
     }
 
+    html += '<section class="manifesto-banner">';
+    html += '<div><b>关于「每日枣报」</b>每天十条，不糊弄、不复读。为什么叫枣报、怎么选稿、枣评是什么——都在创刊词里。</div>';
+    html += '<a href="manifesto.html">读创刊词 →</a>';
+    html += '</section>';
+
     html += '<section class="comments" id="comments">';
     html += '<h2>留言</h2>';
     html += '<p class="comments-tip">留言保存在云端，所有设备都能看到。想说点什么，就写在这儿。</p>';
