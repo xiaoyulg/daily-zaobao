@@ -82,6 +82,8 @@
   function sourceAliases(s) {
     var name = (typeof s === 'string') ? s : ((s && (s.name || s.title)) || '');
     var url = (s && typeof s === 'object' && s.url) ? s.url : sourceURL(name);
+    // 没有原文 URL 的来源不内联（搜索页不算溯源；文末来源行仍保留原回退）
+    if (!url || url.indexOf('baidu.com/s?wd=') >= 0) return [];
     var list = [];
     function add(a) {
       a = String(a || '').trim();
