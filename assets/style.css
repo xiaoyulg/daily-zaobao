@@ -41,15 +41,17 @@ a { color: inherit; text-decoration: none; }
   padding-top: 16px;
   padding-bottom: 16px;
 }
-.brand { display: flex; align-items: center; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; flex: none; }
 .brand-mark {
   display: block;
   width: 34px;
   height: 34px;
   object-fit: contain;
+  flex: none;
 }
-.brand-text { font-size: 19px; font-weight: 600; letter-spacing: .5px; }
+.brand-text { font-size: 19px; font-weight: 600; letter-spacing: .5px; white-space: nowrap; }
 .site-nav { display: flex; gap: 22px; font-size: 14px; color: var(--ink-soft); }
+.site-nav a { white-space: nowrap; }
 .site-nav a:hover { color: var(--accent); }
 
 main { min-height: 60vh; padding-top: 44px; padding-bottom: 72px; }
@@ -146,7 +148,11 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 
 .past-issues { margin: 38px 0 0; }
 .past-issues h2 { font-size: 16px; margin: 0 0 8px; color: var(--accent); }
-.past-issues .archive-list { border-top: 1px solid var(--line); }
+.past-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+.past-list li { border-bottom: 1px solid var(--line); }
+.past-list a { display: block; padding: 12px 4px; }
+.past-list .a-title { font-weight: 600; font-size: 15px; }
+.past-list .a-date { font-family: Georgia, serif; color: var(--muted); font-size: 12px; margin-left: 8px; white-space: nowrap; }
 .past-issues .manifesto-entry .a-date { color: var(--accent); font-weight: 600; }
 .nav-jump {
   background: none; border: 0; padding: 0; font: inherit;
@@ -226,4 +232,6 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
   .issue-title { font-size: 24px; }
   .a-date { width: auto; }
   .archive-list a { flex-direction: column; gap: 4px; }
+  .header-inner { flex-direction: column; align-items: stretch; gap: 10px; padding-top: 12px; padding-bottom: 10px; }
+  .site-nav { justify-content: space-between; gap: 10px; font-size: 13px; }
 }
