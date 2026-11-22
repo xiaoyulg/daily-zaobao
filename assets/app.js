@@ -561,6 +561,11 @@
         n.vx *= 0.86; n.vy *= 0.86;
         n.x += Math.max(-14, Math.min(14, n.vx));
         n.y += Math.max(-14, Math.min(14, n.vy));
+        // 把节点约束在画布内，避免标签被推到边缘与操作提示重叠
+        var limX = Math.max(60, W / 2 - 46);
+        var limY = Math.max(52, H / 2 - 62);
+        n.x = Math.max(-limX, Math.min(limX, n.x));
+        n.y = Math.max(-limY, Math.min(limY, n.y));
       });
       alpha *= 0.983;
       draw();
