@@ -597,6 +597,63 @@
       return null;
     }
 
+    // 线段与矩形相交的重叠长度（Liang-Barsky 裁剪），0 表示不相交
+    function segRectOverlap(x1, y1, x2, y2, rx, ry, rw, rh) {
+      var dx = x2 - x1, dy = y2 - y1;
+      var p = [-dx, dx, -dy, dy];
+      var q = [x1 - rx, rx + rw - x1, y1 - ry, ry + rh - y1];
+      var t0 = 0, t1 = 1;
+      for (var i = 0; i < 4; i++) {
+        if (p[i] === 0) {
+          if (q[i] < 0) return 0;
+        } else {
+          var r = q[i] / p[i];
+          if (p[i] < 0) {
+            if (r > t1) return 0;
+            if (r > t0) t0 = r;
+          } else {
+            if (r < t0) return 0;
+            if (r < t1) t1 = r;
+          }
+        }
+      }
+      return t1 > t0 ? Math.sqrt(dx * dx + dy * dy) * (t1 - t0) : 0;
+    }
+
+    // 围绕节点试 8 个方位，选遮挡可见连线最少的位置；结果只依赖节点，悬停时不会跳动
+    function pickTipPos(n) {
+      var tw = tip.offsetWidth || 200;
+      var th = tip.offsetHeight || 84;
+      var nx = W / 2 + tx + n.x * scale;
+      var ny = H / 2 + ty + n.y * scale;
+      var segs = [];
+      data.links.forEach(function (l) {
+        if (l.weak ? !showWeak : l.n < minLink) return;
+        var involves = (l.a === n || l.b === n);
+        segs.push({
+          x1: W / 2 + tx + l.a.x * scale, y1: H / 2 + ty + l.a.y * scale,
+          x2: W / 2 + tx + l.b.x * scale, y2: H / 2 + ty + l.b.y * scale,
+          w: involves ? 1 : 0.25
+        });
+      });
+      var dirs = [[1, 0], [-1, 0], [0, -1], [0, 1],
+        [0.72, -0.72], [0.72, 0.72], [-0.72, -0.72], [-0.72, 0.72]];
+      var gap = 14, relR = n.r * scale + gap;
+      var best = null;
+      dirs.forEach(function (d, idx) {
+        var dx = d[0] > 0 ? relR * d[0] : (d[0] < 0 ? -tw - relR * -d[0] : -tw / 2);
+        var dy = d[1] > 0 ? relR * d[1] : (d[1] < 0 ? -th - relR * -d[1] : -th / 2);
+        var left = Math.max(6, Math.min(W - tw - 6, nx + dx));
+        var top = Math.max(6, Math.min(H - th - 6, ny + dy));
+        var cost = idx * 1.5; // 遮挡相近时偏好右侧，符合阅读习惯
+        segs.forEach(function (s) {
+          cost += segRectOverlap(s.x1, s.y1, s.x2, s.y2, left, top, tw, th) * s.w;
+        });
+        if (!best || cost < best.cost) best = { cost: cost, left: left, top: top };
+      });
+      return best;
+    }
+
     function showTip(n, p) {
       if (!tip) return;
       if (!n) { tip.hidden = true; return; }
@@ -607,8 +664,9 @@
         Object.keys(data.adj[n.id] || {}).length + ' 个标签</span>' +
         (near ? '<em>强关联：' + near + '</em>' : '');
       tip.hidden = false;
-      tip.style.left = Math.max(8, Math.min(W - 200, p.sx + 14)) + 'px';
-      tip.style.top = Math.max(8, p.sy - 12) + 'px';
+      var pos = pickTipPos(n);
+      tip.style.left = pos.left + 'px';
+      tip.style.top = pos.top + 'px';
     }
 
     function onMove(ev) {
