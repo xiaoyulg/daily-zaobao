@@ -361,7 +361,7 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .graph-hint { position: absolute; left: 14px; bottom: 12px; font-size: 11px; color: var(--muted); pointer-events: none; }
 .graph-tip {
   position: absolute; z-index: 2; min-width: 170px; max-width: 210px;
-  padding: 9px 11px; background: rgba(255,255,255,0.62);
+  padding: 9px 11px; background: rgba(255,255,255,0.40);
   -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
   border: 1px solid rgba(230,226,217,0.9); border-radius: 9px;
   box-shadow: 0 6px 20px rgba(28,26,23,0.10);
@@ -371,6 +371,9 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .graph-tip b { display: block; color: var(--accent); font-size: 13px; }
 .graph-tip span { display: block; color: var(--ink-soft); }
 .graph-tip em { display: block; margin-top: 3px; color: var(--muted); font-style: normal; }
+.graph-tip b, .graph-tip span, .graph-tip em {
+  text-shadow: 0 0 3px rgba(255,255,255,0.95), 0 0 2px rgba(255,255,255,0.95);
+}
 .tag-cloud-details { margin: 0 0 22px; }
 .tag-cloud-details summary { cursor: pointer; font-size: 14px; color: var(--ink-soft); margin-bottom: 10px; }
 
