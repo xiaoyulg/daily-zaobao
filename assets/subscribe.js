@@ -45,7 +45,7 @@
           '<button class="sub-submit" id="subSubmit" type="submit">确认订阅</button>' +
         '</form>' +
         '<p class="sub-msg" id="subMsg" role="status" aria-live="polite"></p>' +
-        '<p class="sub-foot">只用于投递枣报，不发送广告，随时可退订。</p>' +
+        '<p class="sub-foot">只用于投递枣报，不发送广告。<button type="button" class="sub-unsub-link" id="subUnsub">已订阅？退订</button></p>' +
       '</section>';
     document.body.appendChild(wrap);
 
@@ -56,6 +56,7 @@
       if (e.key === 'Escape' && isOpen()) close();
     });
     document.getElementById('subForm').addEventListener('submit', submit);
+    document.getElementById('subUnsub').addEventListener('click', unsubscribe);
   }
 
   function isOpen() {
@@ -124,6 +125,38 @@
         btn.disabled = false;
         btn.textContent = original;
       });
+  }
+
+  function unsubscribe() {
+    var input = document.getElementById('subEmail');
+    var btn = document.getElementById('subUnsub');
+    var email = (input.value || '').trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) {
+      try { email = localStorage.getItem(LS_KEY) || ''; } catch (e) {}
+    }
+    if (!EMAIL_RE.test(email)) {
+      setMsg('请先在上方填写要退订的邮箱。', 'err');
+      input.focus();
+      return;
+    }
+    btn.disabled = true;
+    setMsg('');
+    fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, action: 'unsub' })
+    })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (res.ok && res.d && res.d.ok) {
+          try { localStorage.removeItem(LS_KEY); } catch (err) {}
+          setMsg(res.d.message || '已退订。', 'ok');
+        } else {
+          setMsg((res.d && res.d.error) || '退订失败，请稍后再试。', 'err');
+        }
+      })
+      .catch(function () { setMsg('网络异常，请稍后再试。', 'err'); })
+      .then(function () { btn.disabled = false; });
   }
 
   function mount() {
