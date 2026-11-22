@@ -166,6 +166,22 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .sh-copy { color: var(--ink-soft); }
 .sh-system { color: var(--ink-soft); }
 .sh-more { color: var(--muted); }
+
+/* 全文红心点赞：前置，带计数，空心=未赞，实心=已赞 */
+.sh-heart {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 32px; padding: 0 9px; flex: none;
+  font: inherit; font-size: 12px; line-height: 1; color: #c13584;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 999px; cursor: pointer;
+  transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+.sh-heart svg { width: 16px; height: 16px; fill: none; stroke: #c13584; stroke-width: 2; display: block; }
+.sh-heart .sh-heart-n { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.sh-heart:hover { border-color: #c13584; transform: translateY(-2px); }
+.sh-heart.liked { background: #fff0f6; border-color: #c13584; }
+.sh-heart.liked svg { fill: #c13584; }
+.sh-heart.liked .sh-heart-n { color: #c13584; }
 .sh-wechat:hover, .sh-moments:hover { border-color: #07c160; }
 .sh-weibo:hover { border-color: #e6162d; }
 .sh-facebook:hover { border-color: #1877f2; }
