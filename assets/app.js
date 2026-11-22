@@ -54,11 +54,18 @@
   function renderSources(sources) {
     if (!sources || !sources.length) return '';
     var parts = sources.map(function (s) {
+      if (s && typeof s === 'object') {
+        var label = esc(s.name || s.title || s.url || '来源');
+        var u = s.url ? String(s.url) : null;
+        return u
+          ? '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" title="阅读原文：' + label + '">' + label + '</a>'
+          : '<span>' + label + '</span>';
+      }
       var url = sourceURL(s);
-      var label = esc(s);
+      var text = esc(s);
       return url
-        ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" title="查看来源：' + label + '">' + label + '</a>'
-        : '<span>' + label + '</span>';
+        ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" title="查看来源：' + text + '">' + text + '</a>'
+        : '<span>' + text + '</span>';
     });
     return '<div class="sources"><b>来源</b> ' + parts.join(' · ') + '</div>';
   }
