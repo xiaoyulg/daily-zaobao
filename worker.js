@@ -265,6 +265,38 @@ function handleRobots(url) {
   });
 }
 
+// ===== IndexNow 主动推送：新一期发布后通知 Bing/Yandex/Naver 等 =====
+var INDEXNOW_KEY = 'd0ffa14eae0540c69a4c70f8cfba92d0';
+var INDEXNOW_ORIGIN = 'https://zaobao.sdgzu.edu.kg';
+
+async function pushIndexNow(env, origin) {
+  origin = origin || INDEXNOW_ORIGIN;
+  var assetReq = new Request(new URL('/posts/index.json', origin).toString());
+  var res = await env.ASSETS.fetch(assetReq);
+  var issues = [];
+  if (res.ok) {
+    try { issues = (await res.json()).issues || []; } catch (e) {}
+  }
+  var urls = [origin + '/'];
+  // 推送最近 3 期（都指向静态可索引文章页）
+  issues.slice(0, 3).forEach(function (x) {
+    if (x && validDate(x.date)) urls.push(origin + '/p/' + x.date);
+  });
+  var payload = {
+    host: new URL(origin).host,
+    key: INDEXNOW_KEY,
+    keyLocation: origin + '/' + INDEXNOW_KEY + '.txt',
+    urlList: urls
+  };
+  var r = await fetch('https://api.indexnow.org/indexnow', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  var text = await r.text();
+  return { status: r.status, ok: (r.status === 200 || r.status === 202), body: text.slice(0, 300), urls: urls };
+}
+
 async function handleViews(req, env, url) {
   var kv = env.ZAOBAO_KV;
   if (!kv) return json({ count: 0, degraded: true });
@@ -554,6 +586,22 @@ export default {
     if (path === '/sitemap.xml') return handleSitemap(env, url);
     if (path === '/robots.txt') return handleRobots(url);
 
+    // IndexNow 密钥文件：直接返回纯 key，避免静态资源做后缀跳转
+    if (path === '/' + INDEXNOW_KEY + '.txt') {
+      return new Response(INDEXNOW_KEY, {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=86400' }
+      });
+    }
+    // 手动触发推送（验证用，带 key 参数）
+    if (path === '/api/indexnow' && url.searchParams.get('key') === INDEXNOW_KEY) {
+      return pushIndexNow(env, url.origin).then(function (r) {
+        return json(r);
+      }).catch(function (e) {
+        return json({ ok: false, error: String(e && e.message || e) }, 500);
+      });
+    }
+
     // Google Search Console 域名所有权验证：直接返回，避免静态资源对 .html 后缀做 307 跳转
     if (path === '/google7f159c18a03528a5.html') {
       return new Response('google-site-verification: google7f159c18a03528a5.html', {
@@ -595,5 +643,16 @@ export default {
     if (path.indexOf('/api/') === 0) return json({ error: 'not found' }, 404);
 
     return env.ASSETS.fetch(request);
+  },
+
+  // 定时推送：每天北京时间 08:30（UTC 00:30）通知搜索引擎有新内容
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      pushIndexNow(env).then(function (r) {
+        console.log('IndexNow push', JSON.stringify(r));
+      }).catch(function (e) {
+        console.error('IndexNow push failed', String(e && e.message || e));
+      })
+    );
   }
 };
