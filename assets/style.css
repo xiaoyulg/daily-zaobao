@@ -130,16 +130,17 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .sources b { font-weight: 600; color: var(--ink-soft); }
 .sources a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted currentColor; }
 .sources a:hover { opacity: .78; }
-/* 来源与分享小图标：左右互补，来源在左、图标右对齐 */
-.sources-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-.sources-text { min-width: 0; flex: 1 1 240px; }
-.share-mini { gap: 2px; flex: none; }
-.share-mini .sh-ico {
-  width: 26px; height: 26px;
+/* 来源与分享小图标：强制同一行，来源在左、图标右对齐 */
+.sources-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: nowrap; }
+.sources-text { min-width: 0; flex: 1 1 auto; }
+/* 双类选择器，确保覆盖后面 .share-row 的 wrap 与 gap */
+.share-row.share-mini { gap: 0; flex: none; flex-wrap: nowrap; }
+.share-row.share-mini .sh-ico {
+  width: 24px; height: 24px;
   background: transparent; border-color: transparent;
 }
-.share-mini .sh-ico svg { width: 14px; height: 14px; }
-.share-mini .sh-ico:hover { background: var(--surface); border-color: var(--line); transform: none; box-shadow: none; }
+.share-row.share-mini .sh-ico svg { width: 13px; height: 13px; }
+.share-row.share-mini .sh-ico:hover { background: var(--surface); border-color: var(--line); transform: none; box-shadow: none; }
 
 .share-box { margin-top: 16px; }
 .share-cap { font-size: 12px; color: var(--muted); margin-bottom: 9px; }
