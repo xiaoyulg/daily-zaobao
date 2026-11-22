@@ -5,6 +5,7 @@
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
+    "html_handling": "none",
     "run_worker_first": ["/api/*", "/s", "/p/*", "/sitemap.xml", "/robots.txt", "/google7f159c18a03528a5.html"]
   },
   "kv_namespaces": [
