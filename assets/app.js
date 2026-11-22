@@ -198,6 +198,9 @@
         html += '</div>';
       }
       html += renderSources(it.sources);
+      if (window.ZaoShare) {
+        html += ZaoShare.bar({ kind: 'item', date: date, no: n + 1, title: it.title || '', quote: it.quote || '' });
+      }
       html += '</div></section>';
     });
 
@@ -227,6 +230,12 @@
       html += '<section class="golden"><h2>本期金句</h2><ol>';
       issue.goldenQuotes.forEach(function (q) { html += '<li>' + esc(q) + '</li>'; });
       html += '</ol></section>';
+    }
+
+    if (window.ZaoShare) {
+      html += '<section class="issue-share">';
+      html += ZaoShare.bar({ kind: 'issue', date: date, title: mainTitle, quote: (issue.goldenQuotes && issue.goldenQuotes[0]) || '' });
+      html += '</section>';
     }
 
     html += '<section class="past-issues" id="past-issues">';
