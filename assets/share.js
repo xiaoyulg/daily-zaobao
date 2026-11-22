@@ -8,6 +8,7 @@
     x: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-4.9-6.4L5.9 22H2.8l7.3-8.4L2 2h6.5l4.4 5.8L18.9 2zm-1.1 18h1.7L7.3 3.9H5.5L17.8 20z"/></svg>',
     facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7A10 10 0 0 0 22 12z"/></svg>',
     linkedin: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 2H3.6C2.7 2 2 2.7 2 3.6v16.8c0 .9.7 1.6 1.6 1.6h16.8c.9 0 1.6-.7 1.6-1.6V3.6c0-.9-.7-1.6-1.6-1.6zM8 18.5H5V9.4h3v9.1zM6.5 8.1a1.7 1.7 0 1 1 0-3.5 1.7 1.7 0 0 1 0 3.5zm12 10.4h-3v-4.5c0-1.1 0-2.5-1.5-2.5s-1.8 1.2-1.8 2.4v4.6H9.2V9.4h2.9v1.2h.1c.4-.8 1.4-1.6 2.9-1.6 3.1 0 3.7 2 3.7 4.6v5z"/></svg>',
+    instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.6" cy="6.4" r="1.1" fill="currentColor" stroke="none"/></svg>',
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9.5 14.5l5-5"/><path d="M11.5 6.8l1.2-1.2a3.8 3.8 0 0 1 5.4 5.4l-1.2 1.2"/><path d="M12.5 17.2l-1.2 1.2a3.8 3.8 0 0 1-5.4-5.4l1.2-1.2"/></svg>',
     system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>',
     more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>'
@@ -26,11 +27,15 @@
     { act: 'x', label: 'X', icon: ICON.x, cls: 'sh-x' },
     { act: 'wechat', label: '微信', icon: ICON.wechat, cls: 'sh-wechat' },
     { act: 'facebook', label: 'Facebook', icon: ICON.facebook, cls: 'sh-facebook' },
+    { act: 'instagram', label: 'Instagram', icon: ICON.instagram, cls: 'sh-instagram' },
     { act: 'linkedin', label: 'LinkedIn', icon: ICON.linkedin, cls: 'sh-linkedin' },
     { act: 'copy', label: '复制链接', icon: ICON.copy, cls: 'sh-copy' },
     { act: 'system', label: '更多分享', icon: ICON.system, cls: 'sh-system' }
   ];
-  var MAIN_ACTS = ['moments', 'weibo', 'x']; // 主显：朋友圈、微博、X
+  // 全文分享主显：微信、朋友圈、微博、X、Facebook、Instagram
+  var FULL_MAIN_ACTS = ['wechat', 'moments', 'weibo', 'x', 'facebook', 'instagram'];
+  // 单条分享主显保持精简：朋友圈、微博、X
+  var MINI_MAIN_ACTS = ['moments', 'weibo', 'x'];
   var BTN = {};
   BTNS.forEach(function (b) { BTN[b.act] = b; });
 
@@ -53,11 +58,11 @@
       '" title="' + esc(b.label) + '" aria-label="' + esc(b.label) + '">' + b.icon + '</button>';
   }
 
-  // 主显 3 个 + 「其他」下拉（其余平台）
-  function buttonsHTML() {
-    var html = '';
-    MAIN_ACTS.forEach(function (a) { html += iconButton(BTN[a]); });
-    var rest = BTNS.filter(function (b) { return MAIN_ACTS.indexOf(b.act) < 0; });
+  // 主显若干 + 「其他」下拉（其余平台）；full=true 时前置「分享」二字
+  function buttonsHTML(mainActs, withLabel) {
+    var html = withLabel ? '<span class="sh-label">分享</span>' : '';
+    mainActs.forEach(function (a) { html += iconButton(BTN[a]); });
+    var rest = BTNS.filter(function (b) { return mainActs.indexOf(b.act) < 0; });
     html += '<span class="sh-more-wrap">' +
       '<button type="button" class="sh-ico sh-more" data-act="more" title="其他分享方式" aria-label="其他分享方式">' + ICON.more + '</button>' +
       '<span class="sh-more-menu">';
@@ -66,16 +71,16 @@
     return html;
   }
 
-  // 整篇分享：无边框、无文字、居中（样式在 CSS），图标为主显 + 其他
+  // 整篇分享：前置「分享」二字，微信打头 + 朋友圈/微博/X/Facebook/Instagram，其余进「其他」
   function bar(data) {
     var p = encodeURIComponent(JSON.stringify(data));
-    return '<div class="share-row" data-share="' + p + '">' + buttonsHTML() + '</div>';
+    return '<div class="share-row" data-share="' + p + '">' + buttonsHTML(FULL_MAIN_ACTS, true) + '</div>';
   }
 
-  // 紧凑版：嵌入来源行右端，与来源左右互补
+  // 紧凑版：嵌入来源行右端，与来源左右互补，保持精简
   function miniBar(data) {
     var p = encodeURIComponent(JSON.stringify(data));
-    return '<span class="share-row share-mini" data-share="' + p + '">' + buttonsHTML() + '</span>';
+    return '<span class="share-row share-mini" data-share="' + p + '">' + buttonsHTML(MINI_MAIN_ACTS, false) + '</span>';
   }
 
   function inWeChat() {
@@ -229,6 +234,16 @@
         navigator.share({ title: title, url: url }).catch(function () {});
       } else {
         copy(url).then(function () { toast('卡片链接已复制，可粘贴分享'); });
+      }
+      return;
+    }
+
+    // Instagram 无网页分享接口：有系统分享则用之，否则复制链接并提示
+    if (act === 'instagram') {
+      if (navigator.share) {
+        navigator.share({ title: title, url: url }).catch(function () {});
+      } else {
+        copy(url).then(function () { toast('卡片链接已复制，可粘贴到 Instagram 快拍或私信'); });
       }
       return;
     }
