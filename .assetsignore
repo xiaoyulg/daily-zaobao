@@ -1,0 +1,4 @@
+.git/
+.gitignore
+wrangler.jsonc
+.DS_Store
