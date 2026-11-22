@@ -37,29 +37,52 @@
     try { localStorage.setItem(key, value); } catch (e) { /* 隐私模式等场景下静默降级 */ }
   }
 
-  function bumpViews(date) {
-    var key = 'zaobao:views:' + date;
-    var n = parseInt(storeGet(key, '0'), 10);
-    if (isNaN(n) || n < 0) n = 0;
-    n += 1;
-    storeSet(key, String(n));
-    return n;
+  function apiJSON(url, options) {
+    return fetch(url, options).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
+  }
+
+  function getViews(date) {
+    return apiJSON('api/views?date=' + encodeURIComponent(date))
+      .then(function (d) {
+        if (typeof d.count === 'number' && !d.degraded) {
+          storeSet('zaobao:views:' + date, String(d.count));
+          return d.count;
+        }
+        throw new Error('degraded');
+      })
+      .catch(function () {
+        var n = parseInt(storeGet('zaobao:views:' + date, '0'), 10);
+        return isNaN(n) || n < 0 ? 0 : n;
+      });
   }
 
   function getComments(date) {
-    var raw = storeGet('zaobao:comments:' + date, '[]');
-    try {
-      var list = JSON.parse(raw);
-      return Array.isArray(list) ? list : [];
-    } catch (e) { return []; }
+    return apiJSON('api/comments?date=' + encodeURIComponent(date))
+      .then(function (d) {
+        if (d.degraded || !Array.isArray(d.list)) throw new Error('degraded');
+        storeSet('zaobao:comments:' + date, JSON.stringify(d.list));
+        return d.list;
+      })
+      .catch(function () {
+        try {
+          var l = JSON.parse(storeGet('zaobao:comments:' + date, '[]'));
+          return Array.isArray(l) ? l : [];
+        } catch (e) { return []; }
+      });
   }
 
-  function saveComments(date, list) {
-    storeSet('zaobao:comments:' + date, JSON.stringify(list.slice(-200)));
+  function postComment(date, name, text) {
+    return apiJSON('api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: date, name: name, text: text })
+    }).then(function (d) { return Array.isArray(d.list) ? d.list : null; });
   }
 
-  function renderCommentList(date) {
-    var list = getComments(date);
+  function renderCommentList(list) {
     if (!list.length) {
       return '<p class="comment-empty">还没有留言，来说两句。</p>';
     }
@@ -75,7 +98,7 @@
     return html;
   }
 
-  function renderIssue(issue, index, views) {
+  function renderIssue(issue, index, views, comments) {
     var date = issue.date;
     var i = index.indexOf(date);
     var newer = i >= 0 ? index[i - 1] : null;
@@ -156,13 +179,13 @@
 
     html += '<section class="comments" id="comments">';
     html += '<h2>留言</h2>';
-    html += '<p class="comments-tip">留言保存在本机浏览器，换设备看不到。想说点什么，就写在这儿。</p>';
+    html += '<p class="comments-tip">留言保存在云端，所有设备都能看到。想说点什么，就写在这儿。</p>';
     html += '<form class="comment-form" data-date="' + esc(date) + '">';
     html += '<input type="text" name="name" maxlength="20" placeholder="你的称呼（选填，默认匿名读者）">';
     html += '<textarea name="text" maxlength="500" placeholder="说点什么…" required></textarea>';
     html += '<button type="submit">发表留言</button>';
     html += '</form>';
-    html += '<div class="comment-list-wrap">' + renderCommentList(date) + '</div>';
+    html += '<div class="comment-list-wrap">' + renderCommentList(comments) + '</div>';
     html += '</section>';
 
     html += '</article>';
@@ -217,9 +240,10 @@
 
     loadJSON('posts/' + encodeURIComponent(date) + '.json')
       .then(function (issue) {
-        var views = bumpViews(date);
-        document.title = (issue.title || issue.subtitle || ('每日枣报 · ' + date)) + ' · 每日枣报';
-        app.innerHTML = renderIssue(issue, index.map(function (x) { return x.date; }), views);
+        return Promise.all([getViews(date), getComments(date)]).then(function (res) {
+          document.title = (issue.title || issue.subtitle || ('每日枣报 · ' + date)) + ' · 每日枣报';
+          app.innerHTML = renderIssue(issue, index.map(function (x) { return x.date; }), res[0], res[1]);
+        });
       })
       .catch(function (e) {
         showError(e);
@@ -234,15 +258,30 @@
     var name = (form.elements.name.value || '').trim().slice(0, 20) || '匿名读者';
     var text = (form.elements.text.value || '').trim().slice(0, 500);
     if (!text) return;
-    var now = new Date();
-    var stamp = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
-      ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
-    var list = getComments(date);
-    list.push({ name: name, text: text, time: stamp });
-    saveComments(date, list);
-    form.elements.text.value = '';
-    var wrap = document.querySelector('.comment-list-wrap');
-    if (wrap) wrap.innerHTML = renderCommentList(date);
+    var btn = form.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = '发表中…'; }
+    postComment(date, name, text)
+      .then(function (list) {
+        form.elements.text.value = '';
+        var wrap = document.querySelector('.comment-list-wrap');
+        if (wrap && list) wrap.innerHTML = renderCommentList(list);
+      })
+      .catch(function () {
+        var now = new Date();
+        var stamp = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
+          ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+        var key = 'zaobao:comments:' + date;
+        var local = [];
+        try { local = JSON.parse(storeGet(key, '[]')) || []; } catch (err) { local = []; }
+        local.push({ name: name, text: text, time: stamp });
+        storeSet(key, JSON.stringify(local.slice(-200)));
+        form.elements.text.value = '';
+        var wrap = document.querySelector('.comment-list-wrap');
+        if (wrap) wrap.innerHTML = renderCommentList(local);
+      })
+      .then(function () {
+        if (btn) { btn.disabled = false; btn.textContent = '发表留言'; }
+      });
   });
 
   loadJSON('posts/index.json')
