@@ -103,6 +103,16 @@ main { min-height: 60vh; padding-top: 44px; padding-bottom: 72px; }
 a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent); }
 .item-body { margin: 14px 0 0 44px; }
 .facts { color: var(--ink-soft); }
+/* 正文内来源链接：轻度提示，可溯源，不喧宾夺主 */
+.src-inline {
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--accent);
+  padding-bottom: 1px;
+  cursor: pointer;
+}
+.src-inline:hover { color: var(--accent); background: var(--accent-soft); }
+.src-inline::after { content: "↗"; font-size: .8em; color: var(--accent); margin-left: 1px; }
 .comment {
   margin-top: 14px;
   padding: 16px 18px;
@@ -110,6 +120,14 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
   border: 1px solid var(--line);
   border-radius: 10px;
 }
+.comment-text {
+  line-height: 2.05;
+  letter-spacing: .25px;
+  font-size: 15px;
+  color: var(--ink);
+  word-break: break-word;
+}
+.comment-text em, .comment-text b { color: var(--accent); font-style: normal; }
 .comment-label {
   display: inline-block;
   font-size: 12px;
