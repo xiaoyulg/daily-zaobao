@@ -363,6 +363,70 @@ async function handleComments(req, env, url) {
   return json({ error: 'method not allowed' }, 405);
 }
 
+// ============ 邮件订阅：邮箱存 KV，供每日 9:00 投递任务读取 ============
+var SUB_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+var SUB_LIST_KEY = '292930e38c35c1833331977875421058'; // 仅用于读取订阅列表的内部密钥
+
+async function handleSubscribe(req, env, url) {
+  var kv = env.ZAOBAO_KV;
+  if (!kv) return json({ ok: false, error: '存储暂不可用' }, 503);
+  var ip = req.headers.get('CF-Connecting-IP') || req.headers.get('X-Forwarded-For') || 'unknown';
+  var path = url.pathname;
+
+  // 内部：读取全部订阅者（需密钥），供定时投递任务使用
+  if (path === '/api/subscribers' && req.method === 'GET') {
+    var key = req.headers.get('X-Sub-Key') || url.searchParams.get('key') || '';
+    if (key !== SUB_LIST_KEY) return json({ error: 'unauthorized' }, 401);
+    var keys = await listPrefix(kv, 'sub:');
+    var list = [];
+    for (var k = 0; k < keys.length; k++) {
+      var raw = await kv.get(keys[k]);
+      if (!raw) continue;
+      try {
+        var rec = JSON.parse(raw);
+        if (rec && rec.email) list.push({ email: rec.email, ts: rec.ts || '' });
+      } catch (e) {}
+    }
+    list.sort(function (a, b) { return (a.ts || '').localeCompare(b.ts || ''); });
+    return json({ ok: true, count: list.length, subscribers: list });
+  }
+
+  // 查询某个邮箱是否已订阅
+  if (req.method === 'GET') {
+    var email0 = String(url.searchParams.get('email') || '').trim().toLowerCase();
+    if (!SUB_EMAIL_RE.test(email0)) return json({ ok: true, subscribed: false });
+    return json({ ok: true, subscribed: !!(await kv.get('sub:' + email0)) });
+  }
+
+  if (req.method === 'POST') {
+    // 轻量限流：每 IP 每天最多 8 次订阅/退订操作，防止恶意刷 KV
+    var day = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    var rateKey = 'subrate:' + ip + ':' + day;
+    var used = parseInt(await kv.get(rateKey) || '0', 10) || 0;
+    if (used >= 8) return json({ ok: false, error: '操作太频繁，请明天再试' }, 429);
+
+    var body = await req.json().catch(function () { return {}; });
+    var email = String(body.email || '').trim().toLowerCase();
+    if (!SUB_EMAIL_RE.test(email) || email.length > 120) {
+      return json({ ok: false, error: '请填写有效的邮箱地址' }, 400);
+    }
+    var unsub = body.action === 'unsub' || body.unsubscribe === true;
+    if (unsub) {
+      await kv.delete('sub:' + email);
+      await kv.put(rateKey, String(used + 1), { expirationTtl: 86401 });
+      return json({ ok: true, subscribed: false, message: '已退订，以后不会再收到枣报。' });
+    }
+    var existed = !!(await kv.get('sub:' + email));
+    await kv.put('sub:' + email, JSON.stringify({ email: email, ts: beijingStamp() }));
+    await kv.put(rateKey, String(used + 1), { expirationTtl: 86401 });
+    return json({
+      ok: true, subscribed: true,
+      message: existed ? '你已订阅，每天上午 9:00 见。' : '订阅成功！每天上午 9:00 见。'
+    });
+  }
+  return json({ error: 'method not allowed' }, 405);
+}
+
 async function adminAuthed(req, kv) {
   var expected = await kv.get('admin:token');
   if (!expected) return false;
@@ -439,7 +503,19 @@ async function handleAdmin(req, env, url) {
       if (arr.length) comments.push({ date: cKeys[j].slice(9), list: arr });
     }
     comments.sort(function (a, b) { return b.date.localeCompare(a.date); });
-    return json({ views: views, likes: likes, comments: comments });
+
+    var subKeys = await listPrefix(kv, 'sub:');
+    var subscribers = [];
+    for (var s = 0; s < subKeys.length; s++) {
+      var sraw = await kv.get(subKeys[s]);
+      if (!sraw) continue;
+      try {
+        var sobj = JSON.parse(sraw);
+        if (sobj && sobj.email) subscribers.push({ email: sobj.email, ts: sobj.ts || '' });
+      } catch (e) {}
+    }
+    subscribers.sort(function (a, b) { return (b.ts || '').localeCompare(a.ts || ''); });
+    return json({ views: views, likes: likes, comments: comments, subscribers: subscribers });
   }
 
   if (path === '/api/admin/delete' && req.method === 'POST') {
@@ -486,6 +562,14 @@ export default {
     }
 
     if (path === '/api/health') return json({ ok: true, kv: !!env.ZAOBAO_KV });
+
+    // 邮件订阅
+    if ((path === '/api/subscribe' && (request.method === 'GET' || request.method === 'POST')) ||
+        (path === '/api/subscribers' && request.method === 'GET')) {
+      return handleSubscribe(request, env, url).catch(function (e) {
+        return json({ ok: false, error: String(e && e.message || e) }, 500);
+      });
+    }
 
     if (path === '/api/likes' && (request.method === 'GET' || request.method === 'POST')) {
       return handleLikes(request, env, url).catch(function (e) {
