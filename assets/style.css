@@ -140,25 +140,15 @@ main { min-height: 60vh; padding-top: 44px; padding-bottom: 72px; }
 .golden ol { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .golden li { margin: 8px 0; }
 
-.manifesto-banner {
-  margin: 34px 0 0;
-  padding: 18px 22px;
-  background: var(--accent-soft);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  flex-wrap: wrap;
-  font-size: 14px;
-  color: var(--ink-soft);
+.past-issues { margin: 38px 0 0; }
+.past-issues h2 { font-size: 16px; margin: 0 0 8px; color: var(--accent); }
+.past-issues .archive-list { border-top: 1px solid var(--line); }
+.past-issues .manifesto-entry .a-date { color: var(--accent); font-weight: 600; }
+.nav-jump {
+  background: none; border: 0; padding: 0; font: inherit;
+  color: inherit; cursor: pointer;
 }
-.manifesto-banner b { display: block; color: var(--ink); margin-bottom: 4px; font-size: 15px; }
-.manifesto-banner a {
-  flex: none; color: #fff; background: var(--accent);
-  padding: 7px 18px; border-radius: 8px; font-size: 13px;
-}
-.manifesto-banner a:hover { opacity: .88; }
+.nav-jump:hover { color: var(--accent); }
 
 .comments { margin: 34px 0 0; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .comments h2 { font-size: 16px; margin: 0 0 4px; color: var(--accent); }
