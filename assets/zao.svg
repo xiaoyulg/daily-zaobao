@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="红枣">
+  <defs>
+    <linearGradient id="zbody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e0483c"/>
+      <stop offset="0.5" stop-color="#bb2822"/>
+      <stop offset="1" stop-color="#871713"/>
+    </linearGradient>
+    <radialGradient id="zshine" cx="0.35" cy="0.25" r="0.55">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <path d="M33 13 C37 5 48 5 51 10 C48 17 38 18 33 13 Z" fill="#5f8f3e"/>
+  <path d="M35 12.5 C40 10 45 9.5 49 10" stroke="#3d6427" stroke-width="1" fill="none"/>
+  <path d="M32 15 C31 12 32 9 34 7" stroke="#6b4a2a" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  <path d="M32 17 C43 17 49 26 49 37 C49 50 42 58 32 58 C22 58 15 50 15 37 C15 26 21 17 32 17 Z" fill="url(#zbody)"/>
+  <ellipse cx="26" cy="28" rx="9" ry="13" fill="url(#zshine)"/>
+  <path d="M23 44 C27 47 29 52 30 56" stroke="#76120f" stroke-width="1.2" fill="none" opacity="0.5"/>
+  <path d="M42 44 C39 48 36 52 35 56" stroke="#76120f" stroke-width="1.2" fill="none" opacity="0.5"/>
+  <path d="M31 21 C30 25 30 28 31 31" stroke="#8e1b16" stroke-width="1" fill="none" opacity="0.45"/>
+</svg>
