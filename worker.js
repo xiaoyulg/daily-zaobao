@@ -395,7 +395,7 @@ async function handleComments(req, env, url) {
   return json({ error: 'method not allowed' }, 405);
 }
 
-// ============ 邮件订阅：邮箱存 KV，供每日 9:00 投递任务读取 ============
+// ============ 邮件订阅：邮箱存 KV，供每日 12:45 投递任务读取 ============
 var SUB_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 var SUB_LIST_KEY = '292930e38c35c1833331977875421058'; // 仅用于读取订阅列表的内部密钥
 
@@ -453,7 +453,7 @@ async function handleSubscribe(req, env, url) {
     await kv.put(rateKey, String(used + 1), { expirationTtl: 86401 });
     return json({
       ok: true, subscribed: true,
-      message: existed ? '你已订阅，每天上午 9:00 见。' : '订阅成功！每天上午 9:00 见。'
+      message: existed ? '你已订阅，每天中午 12:45 见。' : '订阅成功！每天中午 12:45 见。'
     });
   }
   return json({ error: 'method not allowed' }, 405);
@@ -645,7 +645,7 @@ export default {
     return env.ASSETS.fetch(request);
   },
 
-  // 定时推送：每天北京时间 08:30（UTC 00:30）通知搜索引擎有新内容
+  // 定时推送：每天北京时间 12:45（UTC 04:45）通知搜索引擎有新内容
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
       pushIndexNow(env).then(function (r) {
