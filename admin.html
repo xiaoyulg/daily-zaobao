@@ -80,10 +80,11 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
     <div class="stats">
       <div class="stat"><b id="statIssues">—</b><span>有浏览记录的期数</span></div>
       <div class="stat"><b id="statViews">—</b><span>累计浏览量</span></div>
+      <div class="stat"><b id="statLikes">—</b><span>累计喜欢</span></div>
       <div class="stat"><b id="statComments">—</b><span>留言总数</span></div>
     </div>
     <div class="card">
-      <h2>各期浏览量</h2>
+      <h2>各期浏览量与喜欢</h2>
       <div id="viewsBox"></div>
     </div>
     <div class="card">
@@ -171,18 +172,25 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
   });
 
   function render(data) {
-    var views = data.views || [], comments = data.comments || [];
+    var views = data.views || [], comments = data.comments || [], likes = data.likes || [];
     var totalViews = views.reduce(function (a, v) { return a + (v.count || 0); }, 0);
+    var totalLikes = likes.reduce(function (a, v) { return a + (v.count || 0); }, 0);
     var totalComments = comments.reduce(function (a, c) { return a + (c.list ? c.list.length : 0); }, 0);
+    var likeByDate = {};
+    likes.forEach(function (v) { likeByDate[v.date] = v.count || 0; });
     document.getElementById('statIssues').textContent = views.length;
     document.getElementById('statViews').textContent = totalViews;
+    document.getElementById('statLikes').textContent = totalLikes;
     document.getElementById('statComments').textContent = totalComments;
 
     var vb = document.getElementById('viewsBox');
     if (!views.length) { vb.innerHTML = '<div class="empty">暂无浏览记录</div>'; }
     else {
-      var h = '<table><thead><tr><th>日期</th><th>浏览量</th></tr></thead><tbody>';
-      views.forEach(function (v) { h += '<tr><td class="cmt-date">' + esc(v.date) + '</td><td>' + esc(v.count) + '</td></tr>'; });
+      var h = '<table><thead><tr><th>日期</th><th>浏览量</th><th>喜欢</th></tr></thead><tbody>';
+      views.forEach(function (v) {
+        h += '<tr><td class="cmt-date">' + esc(v.date) + '</td><td>' + esc(v.count) +
+          '</td><td>' + esc(likeByDate[v.date] || 0) + '</td></tr>';
+      });
       h += '</tbody></table>';
       vb.innerHTML = h;
     }
