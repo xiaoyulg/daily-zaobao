@@ -161,6 +161,7 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .sh-weibo { color: #e6162d; }
 .sh-x { color: var(--ink); }
 .sh-facebook { color: #1877f2; }
+.sh-instagram { color: #c13584; }
 .sh-linkedin { color: #0a66c2; }
 .sh-copy { color: var(--ink-soft); }
 .sh-system { color: var(--ink-soft); }
@@ -168,6 +169,7 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .sh-wechat:hover, .sh-moments:hover { border-color: #07c160; }
 .sh-weibo:hover { border-color: #e6162d; }
 .sh-facebook:hover { border-color: #1877f2; }
+.sh-instagram:hover { border-color: #c13584; }
 .sh-linkedin:hover { border-color: #0a66c2; }
 
 /* 「其他」下拉：默认只显示主显图标，其余收起 */
@@ -189,11 +191,12 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .share-mini .sh-more-menu .sh-ico { width: 26px; height: 26px; }
 .share-mini .sh-more-menu .sh-ico svg { width: 13px; height: 13px; }
 
-/* 整篇分享：去掉边框和文字，缩小行距，居中 */
+/* 整篇分享：去掉边框，前置「分享」二字，缩小行距，居中 */
 .issue-share { margin: 20px 0 4px; padding: 0; background: none; border: 0; text-align: center; }
-.issue-share .share-row { justify-content: center; gap: 10px; }
-.issue-share .sh-ico { width: 34px; height: 34px; }
-.issue-share .sh-ico svg { width: 17px; height: 17px; }
+.issue-share .share-row { justify-content: center; flex-wrap: nowrap; gap: 7px; }
+.issue-share .sh-label { font-size: 13px; color: var(--muted); letter-spacing: 1px; margin-right: 2px; }
+.issue-share .sh-ico { width: 32px; height: 32px; }
+.issue-share .sh-ico svg { width: 16px; height: 16px; }
 .issue-share .sh-more-menu .sh-ico { width: 32px; height: 32px; }
 .issue-share .sh-more-menu .sh-ico svg { width: 16px; height: 16px; }
 
@@ -360,4 +363,8 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
   .archive-list a { flex-direction: column; gap: 4px; }
   .header-inner { flex-direction: column; align-items: stretch; gap: 10px; padding-top: 12px; padding-bottom: 10px; }
   .site-nav { justify-content: space-between; gap: 10px; font-size: 13px; }
+  .issue-share .share-row { gap: 5px; }
+  .issue-share .sh-label { font-size: 12px; margin-right: 0; }
+  .issue-share .sh-ico { width: 28px; height: 28px; }
+  .issue-share .sh-ico svg { width: 14px; height: 14px; }
 }
