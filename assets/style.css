@@ -163,11 +163,11 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .share-overlay {
   position: fixed; inset: 0; z-index: 100;
   background: rgba(20, 18, 15, .72);
-  display: flex; align-items: flex-start; justify-content: flex-end;
-  padding: 16px 20px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px 18px;
 }
 .wx-guide {
-  margin-top: 4px; margin-right: 6px; text-align: center; color: #fff;
+  align-self: flex-start; margin-left: auto; margin-top: 4px; text-align: center; color: #fff;
   background: rgba(28, 26, 23, .96); border-radius: 14px;
   padding: 20px 22px 18px; max-width: 260px;
   box-shadow: 0 16px 44px rgba(0,0,0,.35);
@@ -175,8 +175,45 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .wx-guide-arrow { font-size: 34px; line-height: 1; color: #07c160; margin-bottom: 6px; }
 .wx-guide p { font-size: 14px; line-height: 1.7; margin: 0 0 14px; }
 .wx-guide p b { color: #07c160; }
-.wx-guide .sh-close { color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.28); }
-.sh-close { font: inherit; font-size: 13px; padding: 7px 18px; border-radius: 8px; cursor: pointer; }
+.wx-guide .sh-close, .wx-guide .sh-dl { color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.28); }
+.wx-guide .sh-dl { background: #07c160; border-color: #07c160; margin-bottom: 8px; }
+.sh-close { font: inherit; font-size: 13px; padding: 8px 18px; border-radius: 8px; cursor: pointer; background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line); }
+.sh-dl { font: inherit; font-size: 13px; padding: 8px 18px; border-radius: 8px; cursor: pointer; background: var(--accent); color: #fff; border: 1px solid var(--accent); }
+
+/* 微信 / 朋友圈分享卡预览与分步指引 */
+.wx-sheet {
+  width: 100%; max-width: 400px; max-height: 92vh; overflow: auto;
+  background: var(--bg); border-radius: 16px; padding: 18px 18px 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+}
+.wx-sheet-hd { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.wx-sheet-ico {
+  width: 40px; height: 40px; flex: none; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid var(--line);
+}
+.wx-sheet-ico svg { width: 22px; height: 22px; display: block; }
+.wx-sheet-hd > div { flex: 1; min-width: 0; }
+.wx-sheet-hd b { display: block; font-size: 15px; color: var(--ink); }
+.wx-sheet-hd small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.share-x { background: none; border: 0; font-size: 22px; color: var(--muted); cursor: pointer; padding: 0 4px; }
+.wx-card {
+  display: flex; gap: 12px; align-items: stretch;
+  background: #fff; border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px; margin-bottom: 16px;
+}
+.wx-card img { width: 84px; height: 84px; flex: none; object-fit: cover; border-radius: 6px; background: var(--accent-soft); }
+.wx-card-txt { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.wx-card-txt b { font-size: 14px; line-height: 1.4; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wx-card-txt span { font-size: 12px; line-height: 1.5; color: var(--ink-soft); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wx-card-txt em { font-size: 11px; color: var(--muted); font-style: normal; margin-top: 5px; }
+.wx-steps { margin-bottom: 18px; }
+.wx-steps > span { font-size: 12px; font-weight: 600; color: var(--accent); }
+.wx-steps ol { margin: 8px 0 0; padding-left: 20px; }
+.wx-steps li { font-size: 13px; line-height: 1.9; color: var(--ink-soft); }
+.wx-steps li b { color: #07c160; }
+.wx-actions { display: flex; gap: 10px; }
+.wx-actions button { flex: 1; }
 .sh-toast {
   position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%);
   background: var(--ink); color: #fff; font-size: 14px;
