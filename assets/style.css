@@ -131,6 +131,50 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .sources a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted currentColor; }
 .sources a:hover { opacity: .78; }
 
+.share-box { margin-top: 16px; }
+.share-cap { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.share-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.sh-btn {
+  font: inherit; font-size: 13px; line-height: 1.3;
+  color: var(--ink-soft); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 14px; cursor: pointer;
+}
+.sh-btn:hover { border-color: var(--accent); color: var(--accent); }
+.sh-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.sh-primary:hover { background: #89251f; border-color: #89251f; color: #fff; }
+.issue-share { margin: 36px 0 0; padding: 22px 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.issue-share .share-cap { font-size: 14px; font-weight: 600; color: var(--ink); }
+
+.share-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(20, 18, 15, .72);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.share-modal {
+  width: 100%; max-width: 420px; max-height: 92vh; overflow: auto;
+  background: var(--bg); border-radius: 16px; padding: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+}
+.share-modal-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.share-modal-hd b { font-size: 15px; }
+.share-x { background: none; border: 0; font-size: 18px; color: var(--muted); cursor: pointer; padding: 2px 8px; }
+.share-poster { display: block; width: 100%; border-radius: 10px; }
+.share-hint { font-size: 12px; color: var(--muted); text-align: center; margin: 12px 0 14px; }
+.share-modal-ft { display: flex; gap: 10px; }
+.share-modal-ft a, .share-modal-ft button {
+  flex: 1; text-align: center; font: inherit; font-size: 14px;
+  padding: 9px 12px; border-radius: 8px; cursor: pointer; text-decoration: none;
+}
+.sh-dl { background: var(--accent); color: #fff; border: 1px solid var(--accent); }
+.sh-close { background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line); }
+.sh-toast {
+  position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%);
+  background: var(--ink); color: #fff; font-size: 14px;
+  padding: 10px 18px; border-radius: 8px; z-index: 200;
+}
+
 .education { margin: 44px 0 0; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 12px; }
 .education h2 { font-size: 16px; margin: 0 0 18px; color: var(--accent); }
 .edu-item { padding: 14px 0; border-bottom: 1px dashed var(--line); }
