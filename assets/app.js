@@ -100,9 +100,10 @@
 
   function renderIssue(issue, index, views, comments) {
     var date = issue.date;
-    var i = index.indexOf(date);
-    var newer = i >= 0 ? index[i - 1] : null;
-    var older = i >= 0 ? index[i + 1] : null;
+    var dates = index.map(function (x) { return x.date || x; });
+    var i = dates.indexOf(date);
+    var newer = i >= 0 ? dates[i - 1] : null;
+    var older = i >= 0 ? dates[i + 1] : null;
     var mainTitle = issue.title || issue.subtitle || ('每日枣报 · ' + date);
 
     var html = '<article class="issue">';
@@ -116,7 +117,8 @@
     html += '</div>';
     html += '<div class="issue-nav">';
     if (newer) html += '<a href="#/' + newer + '">← 更新一期</a>';
-    html += '<a href="#/archive">往期归档</a>';
+    html += '<button type="button" class="nav-jump" data-jump="past">往期 ↓</button>';
+    html += '<a href="#/archive">全部归档</a>';
     if (older) html += '<a href="#/' + older + '">更早一期 →</a>';
     html += '</div></div>';
 
@@ -177,10 +179,27 @@
       html += '</ol></section>';
     }
 
-    html += '<section class="manifesto-banner">';
-    html += '<div><b>关于「每日枣报」</b>每天十条，不糊弄、不复读。为什么叫枣报、怎么选稿、枣评是什么——都在创刊词里。</div>';
-    html += '<a href="manifesto.html">读创刊词 →</a>';
-    html += '</section>';
+    html += '<section class="past-issues" id="past-issues">';
+    html += '<h2>往期</h2>';
+    html += '<ul class="archive-list">';
+    var past = (index || []).filter(function (x) {
+      var d = x.date || x;
+      return d && d < date;
+    });
+    past.forEach(function (it) {
+      var d = it.date || it;
+      html += '<li><a href="#/' + esc(d) + '">';
+      html += '<span class="a-date">' + esc(d) + '</span>';
+      html += '<span><span class="a-title">' + esc(it.title || ('每日枣报 · ' + d)) + '</span>';
+      if (it.summary) html += '<span class="a-summary">' + esc(it.summary) + '</span>';
+      html += '</span></a></li>';
+    });
+    html += '<li class="manifesto-entry"><a href="manifesto.html">';
+    html += '<span class="a-date">创刊词</span>';
+    html += '<span><span class="a-title">重逢二十年前的那份美好</span>';
+    html += '<span class="a-summary">为什么叫枣报、怎么选稿、枣评是什么——都在创刊词里</span>';
+    html += '</span></a></li>';
+    html += '</ul></section>';
 
     html += '<section class="comments" id="comments">';
     html += '<h2>留言</h2>';
@@ -247,13 +266,20 @@
       .then(function (issue) {
         return Promise.all([getViews(date), getComments(date)]).then(function (res) {
           document.title = (issue.title || issue.subtitle || ('每日枣报 · ' + date)) + ' · 每日枣报';
-          app.innerHTML = renderIssue(issue, index.map(function (x) { return x.date; }), res[0], res[1]);
+          app.innerHTML = renderIssue(issue, index, res[0], res[1]);
         });
       })
       .catch(function (e) {
         showError(e);
       });
   }
+
+  document.addEventListener('click', function (e) {
+    var target = e.target && e.target.closest ? e.target.closest('[data-jump="past"]') : null;
+    if (!target) return;
+    var section = document.getElementById('past-issues');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   document.addEventListener('submit', function (e) {
     var form = e.target;
