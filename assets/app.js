@@ -231,24 +231,27 @@
 
     html += '<section class="past-issues" id="past-issues">';
     html += '<h2>往期</h2>';
-    html += '<ul class="archive-list">';
+    html += '<ul class="past-list">';
+    // 创刊词固定在第一行
+    html += '<li class="manifesto-entry"><a href="manifesto.html">';
+    html += '<span class="a-title">重逢二十年前的那份美好</span>';
+    html += '<span class="a-date">创刊词</span>';
+    html += '</a></li>';
+    // 其余往期按时间倒序，最多 4 期（连同创刊词共 5 行）；只留标题，标题后附日期
     var past = (index || []).filter(function (x) {
       var d = x.date || x;
       return d && d < date;
-    });
+    }).slice(0, 4);
     past.forEach(function (it) {
       var d = it.date || it;
+      var t = it.subtitle || (it.summary ? String(it.summary).split(/[。！？]/)[0] : '') ||
+              (it.title ? String(it.title).replace(/每日枣报\s*·\s*\d{4}-\d{2}-\d{2}/, '').trim() : '') ||
+              ('每日枣报 · ' + d);
       html += '<li><a href="#/' + esc(d) + '">';
+      html += '<span class="a-title">' + esc(t) + '</span>';
       html += '<span class="a-date">' + esc(d) + '</span>';
-      html += '<span><span class="a-title">' + esc(it.title || ('每日枣报 · ' + d)) + '</span>';
-      if (it.summary) html += '<span class="a-summary">' + esc(it.summary) + '</span>';
-      html += '</span></a></li>';
+      html += '</a></li>';
     });
-    html += '<li class="manifesto-entry"><a href="manifesto.html">';
-    html += '<span class="a-date">创刊词</span>';
-    html += '<span><span class="a-title">重逢二十年前的那份美好</span>';
-    html += '<span class="a-summary">为什么叫枣报、怎么选稿、枣评是什么——都在创刊词里</span>';
-    html += '</span></a></li>';
     html += '</ul></section>';
 
     html += '<section class="comments" id="comments">';
