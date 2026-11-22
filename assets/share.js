@@ -55,6 +55,17 @@
     return html + '</div></div>';
   }
 
+  // 紧凑版：仅图标，嵌入来源行右端，与来源左右互补
+  function miniBar(data) {
+    var p = encodeURIComponent(JSON.stringify(data));
+    var html = '<span class="share-row share-mini" data-share="' + p + '">';
+    BTNS.forEach(function (b) {
+      html += '<button type="button" class="sh-ico ' + b.cls + '" data-act="' + b.act +
+        '" title="' + esc(b.label) + '" aria-label="' + esc(b.label) + '">' + b.icon + '</button>';
+    });
+    return html + '</span>';
+  }
+
   function inWeChat() {
     return /MicroMessenger/i.test(navigator.userAgent || '');
   }
@@ -204,5 +215,5 @@
     }
   });
 
-  window.ZaoShare = { bar: bar };
+  window.ZaoShare = { bar: bar, miniBar: miniBar };
 })();
