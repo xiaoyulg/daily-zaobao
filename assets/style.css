@@ -340,6 +340,39 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .a-title { font-weight: 600; font-size: 16px; }
 .a-summary { color: var(--muted); font-size: 13px; margin-top: 3px; }
 
+.graph-card { margin: 22px 0 30px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; }
+.graph-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
+.graph-head h2 { font-size: 17px; margin: 0 0 4px; color: var(--accent); }
+.graph-head p { margin: 0; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.graph-tools { display: flex; align-items: center; gap: 10px; flex: none; font-size: 12px; color: var(--ink-soft); }
+.graph-tools label { display: inline-flex; align-items: center; gap: 6px; }
+.graph-tools select, .graph-tools button {
+  font: inherit; color: var(--ink-soft); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; cursor: pointer;
+}
+.graph-tools select:hover, .graph-tools button:hover { border-color: var(--accent); color: var(--accent); }
+.graph-stage {
+  position: relative; height: 460px;
+  background-color: #fcfbf8;
+  background-image: radial-gradient(#e6e2d9 0.7px, transparent 0.7px);
+  background-size: 18px 18px;
+}
+.graph-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.graph-hint { position: absolute; left: 14px; bottom: 12px; font-size: 11px; color: var(--muted); pointer-events: none; }
+.graph-tip {
+  position: absolute; z-index: 2; min-width: 170px; max-width: 210px;
+  padding: 9px 11px; background: rgba(255,255,255,0.97);
+  border: 1px solid var(--line); border-radius: 9px;
+  box-shadow: 0 6px 20px rgba(28,26,23,0.10);
+  font-size: 12px; line-height: 1.55; pointer-events: none;
+}
+.graph-tip[hidden] { display: none; }
+.graph-tip b { display: block; color: var(--accent); font-size: 13px; }
+.graph-tip span { display: block; color: var(--ink-soft); }
+.graph-tip em { display: block; margin-top: 3px; color: var(--muted); font-style: normal; }
+.tag-cloud-details { margin: 0 0 22px; }
+.tag-cloud-details summary { cursor: pointer; font-size: 14px; color: var(--ink-soft); margin-bottom: 10px; }
+
 .tag-cloud { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 34px; }
 .tag-cloud-item {
   display: inline-flex; align-items: center; gap: 6px;
@@ -383,4 +416,7 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
   .issue-share .sh-label { font-size: 12px; margin-right: 0; }
   .issue-share .sh-ico { width: 28px; height: 28px; }
   .issue-share .sh-ico svg { width: 14px; height: 14px; }
+  .graph-head { flex-direction: column; gap: 12px; }
+  .graph-stage { height: 380px; }
+  .graph-hint { font-size: 10px; }
 }
