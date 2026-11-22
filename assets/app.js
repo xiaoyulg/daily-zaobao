@@ -19,6 +19,50 @@
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
+  var SOURCE_SITES = {
+    '新华社': 'http://www.xinhuanet.com/', '新华网': 'http://www.xinhuanet.com/',
+    '央视': 'https://news.cctv.com/', '央视新闻': 'https://news.cctv.com/',
+    '人民日报': 'http://www.people.com.cn/', '人民网': 'http://www.people.com.cn/',
+    '光明日报': 'https://www.gmw.cn/', '中青报': 'https://www.cyol.com/', '中国青年报': 'https://www.cyol.com/',
+    '财新': 'https://www.caixin.com/', '新京报': 'https://www.bjnews.com.cn/',
+    '南都': 'https://www.oeeee.com/', '南方都市报': 'https://www.oeeee.com/', '南方周末': 'https://www.infzm.com/',
+    '澎湃': 'https://www.thepaper.cn/', '澎湃新闻': 'https://www.thepaper.cn/',
+    '第一财经': 'https://www.yicai.com/', '一财': 'https://www.yicai.com/',
+    'FT': 'https://www.ft.com/', '金融时报': 'https://www.ft.com/',
+    'WSJ': 'https://www.wsj.com/', '华尔街日报': 'https://www.wsj.com/',
+    'NYT': 'https://www.nytimes.com/', '纽约时报': 'https://www.nytimes.com/',
+    '路透': 'https://www.reuters.com/', '路透社': 'https://www.reuters.com/',
+    '彭博': 'https://www.bloomberg.com/', '彭博社': 'https://www.bloomberg.com/',
+    '上海证券报': 'https://www.cnstock.com/', '证券时报': 'https://www.stcn.com/',
+    '财联社': 'https://www.cls.cn/', '央视网': 'https://www.cctv.com/',
+    '央视财经': 'https://tv.cctv.com/cctv2/', '新京报贝壳财经': 'https://www.bjnews.com.cn/',
+    '工信部': 'https://www.miit.gov.cn/', '国家数据局': 'https://www.nda.gov.cn/',
+    '中国地震局': 'https://www.cea.gov.cn/', '中国工商银行': 'https://www.icbc.com.cn/',
+    '12306': 'https://www.12306.cn/'
+  };
+
+  function sourceURL(name) {
+    var s = String(name || '').replace(/[（(][^）)]*[）)]/g, '').trim();
+    if (!s) return null;
+    if (SOURCE_SITES[s]) return SOURCE_SITES[s];
+    for (var k in SOURCE_SITES) {
+      if (Object.prototype.hasOwnProperty.call(SOURCE_SITES, k) && s.indexOf(k) >= 0) return SOURCE_SITES[k];
+    }
+    return 'https://www.baidu.com/s?wd=' + encodeURIComponent(s);
+  }
+
+  function renderSources(sources) {
+    if (!sources || !sources.length) return '';
+    var parts = sources.map(function (s) {
+      var url = sourceURL(s);
+      var label = esc(s);
+      return url
+        ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" title="访问 ' + label + ' 官网">' + label + '</a>'
+        : '<span>' + label + '</span>';
+    });
+    return '<div class="sources"><b>来源</b> ' + parts.join(' · ') + '</div>';
+  }
+
   function loadJSON(url) {
     return fetch(url, { cache: 'no-store' }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url);
@@ -118,6 +162,7 @@
     html += '<div class="issue-nav">';
     if (newer) html += '<a href="#/' + newer + '">← 更新一期</a>';
     html += '<button type="button" class="nav-jump" data-jump="past">往期 ↓</button>';
+    html += '<a href="index.html#/tags">标签网</a>';
     html += '<a href="#/archive">全部归档</a>';
     if (older) html += '<a href="#/' + older + '">更早一期 →</a>';
     html += '</div></div>';
@@ -132,7 +177,9 @@
       html += '<h2 class="item-title">' + esc(it.title) + '</h2></div>';
       if (it.tags && it.tags.length) {
         html += '<div class="item-meta">';
-        it.tags.forEach(function (t) { html += '<span class="tag">' + esc(t) + '</span>'; });
+        it.tags.forEach(function (t) {
+          html += '<a class="tag" href="#/tag/' + encodeURIComponent(t) + '" title="查看「' + esc(t) + '」跨期聚合">' + esc(t) + '</a>';
+        });
         html += '</div>';
       }
       html += '<div class="item-body">';
@@ -143,9 +190,7 @@
         if (it.quote) html += '<div class="quote">' + esc(it.quote) + '</div>';
         html += '</div>';
       }
-      if (it.sources && it.sources.length) {
-        html += '<div class="sources"><b>来源</b> ' + esc(it.sources.join(' · ')) + '</div>';
-      }
+      html += renderSources(it.sources);
       html += '</div></section>';
     });
 
@@ -159,9 +204,7 @@
         html += '<div class="edu-head"><span class="edu-region">' + esc(it.region || '资讯') + '</span>';
         html += '<span class="edu-title">' + esc(it.headline || it.title || '') + '</span></div>';
         if (it.facts) html += '<p class="edu-facts">' + esc(it.facts) + '</p>';
-        if (it.sources && it.sources.length) {
-          html += '<div class="sources"><b>来源</b> ' + esc(it.sources.join(' · ')) + '</div>';
-        }
+        html += renderSources(it.sources);
         html += '</div>';
       });
       if (edu.analysis) {
@@ -216,6 +259,120 @@
     return html;
   }
 
+  var allIssuesCache = null;
+
+  function getAllIssues(manifest) {
+    var key = manifest.updatedAt || '';
+    if (allIssuesCache && allIssuesCache.key === key) return Promise.resolve(allIssuesCache.list);
+    try {
+      var raw = sessionStorage.getItem('zaobao:all:' + key);
+      if (raw) {
+        var cached = JSON.parse(raw);
+        allIssuesCache = { key: key, list: cached };
+        return Promise.resolve(cached);
+      }
+    } catch (e) {}
+
+    var dates = (manifest.issues || []).map(function (x) { return x.date; });
+    var out = [];
+    var cursor = 0;
+    function next() {
+      if (cursor >= dates.length) return Promise.resolve();
+      var d = dates[cursor++];
+      return loadJSON('posts/' + encodeURIComponent(d) + '.json')
+        .then(function (j) { out.push(j); })
+        .catch(function () {})
+        .then(next);
+    }
+    var lanes = [];
+    for (var i = 0; i < Math.min(6, dates.length); i++) lanes.push(next());
+    return Promise.all(lanes).then(function () {
+      out.sort(function (a, b) { return String(b.date || '').localeCompare(String(a.date || '')); });
+      allIssuesCache = { key: key, list: out };
+      try { sessionStorage.setItem('zaobao:all:' + key, JSON.stringify(out)); } catch (e) {}
+      return out;
+    });
+  }
+
+  function buildTagIndex(all) {
+    var map = {}, co = {};
+    (all || []).forEach(function (issue) {
+      (issue.items || []).forEach(function (it) {
+        var tags = (it.tags || []).filter(Boolean);
+        var rec = {
+          date: issue.date, title: it.title || '', facts: it.facts || '',
+          comment: it.comment || '', quote: it.quote || '',
+          tags: tags, sources: it.sources || []
+        };
+        tags.forEach(function (t) {
+          if (!map[t]) map[t] = [];
+          map[t].push(rec);
+        });
+        for (var i = 0; i < tags.length; i++) {
+          for (var j = i + 1; j < tags.length; j++) {
+            if (tags[i] === tags[j]) continue;
+            var pair = [tags[i], tags[j]].sort().join('\u0001');
+            co[pair] = (co[pair] || 0) + 1;
+          }
+        }
+      });
+    });
+    return { map: map, co: co };
+  }
+
+  function renderTagNet(all) {
+    var idx = buildTagIndex(all);
+    var tags = Object.keys(idx.map).sort(function (a, b) {
+      return idx.map[b].length - idx.map[a].length || a.localeCompare(b);
+    });
+    var itemCount = (all || []).reduce(function (n, x) { return n + (x.items || []).length; }, 0);
+    var html = '<div class="archive-head"><h1>标签网</h1><p>共 ' + tags.length + ' 个标签 · ' + itemCount + ' 条新闻 · 点击标签看跨期聚合</p></div>';
+    html += '<section class="tag-cloud">';
+    tags.forEach(function (t) {
+      html += '<a class="tag-cloud-item" href="#/tag/' + encodeURIComponent(t) + '">' + esc(t) + '<sup>' + idx.map[t].length + '</sup></a>';
+    });
+    html += '</section>';
+    var pairs = Object.keys(idx.co).map(function (k) {
+      var p = k.split('\u0001');
+      return { a: p[0], b: p[1], n: idx.co[k] };
+    }).sort(function (x, y) { return y.n - x.n; }).slice(0, 12);
+    if (pairs.length) {
+      html += '<section class="tag-links"><h2>标签共现 · 知识连线</h2><ul>';
+      pairs.forEach(function (p) {
+        html += '<li><a href="#/tag/' + encodeURIComponent(p.a) + '">' + esc(p.a) + '</a><span> × </span>' +
+          '<a href="#/tag/' + encodeURIComponent(p.b) + '">' + esc(p.b) + '</a><b>' + p.n + ' 条</b></li>';
+      });
+      html += '</ul></section>';
+    }
+    return html;
+  }
+
+  function renderTagPage(tag, all) {
+    var idx = buildTagIndex(all);
+    var list = (idx.map[tag] || []).slice();
+    var dates = {};
+    list.forEach(function (r) { dates[r.date] = 1; });
+    var html = '<div class="archive-head"><h1>标签 · ' + esc(tag) + '</h1><p>' + list.length +
+      ' 条新闻 · 横跨 ' + Object.keys(dates).length + ' 期</p></div>';
+    html += '<p class="tag-back"><a href="index.html#/tags">← 返回标签网</a></p>';
+    if (!list.length) return html + '<div class="empty">这个标签下暂时没有新闻。</div>';
+    list.forEach(function (r) {
+      html += '<section class="tag-result">';
+      html += '<div class="tr-meta"><a href="#/' + esc(r.date) + '">' + esc(r.date) + '</a>';
+      r.tags.forEach(function (t) {
+        html += '<a class="tag" href="#/tag/' + encodeURIComponent(t) + '">' + esc(t) + '</a>';
+      });
+      html += '</div>';
+      html += '<h2><a href="#/' + esc(r.date) + '">' + esc(r.title) + '</a></h2>';
+      if (r.facts) html += '<p class="facts">' + esc(r.facts) + '</p>';
+      if (r.comment) html += '<div class="comment"><div>' + esc(r.comment) + '</div></div>';
+      if (r.quote) html += '<div class="quote">' + esc(r.quote) + '</div>';
+      html += renderSources(r.sources);
+      html += '</section>';
+    });
+    return html;
+  }
+
   function renderArchive(manifest) {
     var issues = manifest.issues || [];
     var html = '<div class="archive-head"><h1>往期归档</h1><p>共 ' + issues.length + ' 期 · 按时间倒序</p></div>';
@@ -248,6 +405,21 @@
     if (hash === 'archive') {
       document.title = '往期归档 · 每日枣报';
       app.innerHTML = renderArchive(manifest);
+      return;
+    }
+
+    if (hash === 'tags' || hash.indexOf('tag/') === 0) {
+      app.innerHTML = '<div class="loading">正在整理标签网…</div>';
+      getAllIssues(manifest).then(function (all) {
+        if (hash === 'tags') {
+          document.title = '标签网 · 每日枣报';
+          app.innerHTML = renderTagNet(all);
+        } else {
+          var tag = hash.slice(4);
+          document.title = '标签 ' + tag + ' · 每日枣报';
+          app.innerHTML = renderTagPage(tag, all);
+        }
+      }).catch(showError);
       return;
     }
 
