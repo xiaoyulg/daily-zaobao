@@ -58,9 +58,17 @@
       '" title="' + esc(b.label) + '" aria-label="' + esc(b.label) + '">' + b.icon + '</button>';
   }
 
-  // 主显若干 + 「其他」下拉（其余平台）；full=true 时前置「分享」二字
-  function buttonsHTML(mainActs, withLabel) {
-    var html = withLabel ? '<span class="sh-label">分享</span>' : '';
+  var HEART_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.6-7.5-10C4.5 7.3 6.8 5.2 9.4 5.2c1.3 0 2.4.6 2.6 1.5.2-.9 1.3-1.5 2.6-1.5 2.6 0 4.9 2.1 4.9 5.3 0 5.4-7.5 10-7.5 10z"/></svg>';
+
+  function heartHTML(date) {
+    return '<button type="button" class="sh-heart" data-like-date="' + esc(date) +
+      '" aria-pressed="false" title="喜欢这期" aria-label="喜欢这期">' + HEART_SVG +
+      '<span class="sh-heart-n"></span></button>';
+  }
+
+  // 主显若干 + 「其他」下拉（其余平台）
+  function buttonsHTML(mainActs) {
+    var html = '';
     mainActs.forEach(function (a) { html += iconButton(BTN[a]); });
     var rest = BTNS.filter(function (b) { return mainActs.indexOf(b.act) < 0; });
     html += '<span class="sh-more-wrap">' +
@@ -71,16 +79,17 @@
     return html;
   }
 
-  // 整篇分享：前置「分享」二字，微信打头 + 朋友圈/微博/X/Facebook/Instagram，其余进「其他」
+  // 整篇：前置可点赞红心，微信打头 + 朋友圈/微博/X/Facebook/Instagram，其余进「其他」
   function bar(data) {
     var p = encodeURIComponent(JSON.stringify(data));
-    return '<div class="share-row" data-share="' + p + '">' + buttonsHTML(FULL_MAIN_ACTS, true) + '</div>';
+    return '<div class="share-row" data-share="' + p + '">' +
+      heartHTML(data && data.date ? data.date : '') + buttonsHTML(FULL_MAIN_ACTS) + '</div>';
   }
 
-  // 紧凑版：嵌入来源行右端，与来源左右互补，保持精简
+  // 紧凑版：嵌入来源行右端，与来源左右互补，保持精简（无红心）
   function miniBar(data) {
     var p = encodeURIComponent(JSON.stringify(data));
-    return '<span class="share-row share-mini" data-share="' + p + '">' + buttonsHTML(MINI_MAIN_ACTS, false) + '</span>';
+    return '<span class="share-row share-mini" data-share="' + p + '">' + buttonsHTML(MINI_MAIN_ACTS) + '</span>';
   }
 
   function inWeChat() {
@@ -193,6 +202,68 @@
       if (menus[i] !== except) menus[i].classList.remove('open');
     }
   }
+
+  // ===== 红心点赞：跨设备计数，每人每期一次，可取消 =====
+  function paintHeart(el, d) {
+    if (!el) return;
+    var n = el.querySelector('.sh-heart-n');
+    if (n) n.textContent = (d && typeof d.count === 'number' && d.count > 0) ? String(d.count) : '';
+    var liked = !!(d && d.liked);
+    if (liked) el.classList.add('liked'); else el.classList.remove('liked');
+    el.setAttribute('aria-pressed', liked ? 'true' : 'false');
+    el.setAttribute('title', liked ? '取消喜欢' : '喜欢这期');
+    el.setAttribute('aria-label', liked ? '取消喜欢' : '喜欢这期');
+  }
+
+  function likeAPI(date, like, cb) {
+    var url = 'api/likes?date=' + encodeURIComponent(date);
+    var opt = like == null
+      ? { cache: 'no-store' }
+      : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ like: like }) };
+    fetch(url, opt)
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) { cb(d); })
+      .catch(function () { cb(null); });
+  }
+
+  var heartsSeen = new WeakSet();
+  function mountHearts() {
+    var hearts = document.querySelectorAll('.issue-share .sh-heart[data-like-date]');
+    for (var i = 0; i < hearts.length; i++) {
+      var el = hearts[i];
+      if (heartsSeen.has(el)) continue;
+      heartsSeen.add(el);
+      (function (node) {
+        var date = node.getAttribute('data-like-date');
+        if (!date) return;
+        likeAPI(date, null, function (d) { paintHeart(node, d); });
+      })(el);
+    }
+  }
+
+  // app.js 用 innerHTML 重绘正文，用 MutationObserver 自动补挂红心状态
+  if (typeof MutationObserver !== 'undefined') {
+    new MutationObserver(mountHearts).observe(
+      document.getElementById('app') || document.body,
+      { childList: true, subtree: true }
+    );
+  }
+
+  var heartBusy = new WeakSet();
+  document.addEventListener('click', function (e) {
+    var heart = e.target && e.target.closest ? e.target.closest('.issue-share .sh-heart') : null;
+    if (!heart) return;
+    var date = heart.getAttribute('data-like-date');
+    if (!date || heartBusy.has(heart)) return;
+    heartBusy.add(heart);
+    var wasLiked = heart.classList.contains('liked');
+    // 乐观更新，失败则回调里以服务端结果为准
+    paintHeart(heart, { count: parseInt((heart.querySelector('.sh-heart-n') || {}).textContent || '0', 10) + (wasLiked ? -1 : 1), liked: !wasLiked });
+    likeAPI(date, !wasLiked, function (d) {
+      heartBusy.delete(heart);
+      paintHeart(heart, d || { count: 0, liked: wasLiked });
+    });
+  });
 
   document.addEventListener('click', function (e) {
     var btn = e.target && e.target.closest ? e.target.closest('.share-row [data-act]') : null;
