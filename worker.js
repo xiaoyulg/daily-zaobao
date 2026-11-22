@@ -123,6 +123,148 @@ async function handleShare(req, env, url) {
   });
 }
 
+// ============ 搜索引擎收录：服务端渲染的可索引静态页 ============
+// 首页是 hash 路由 SPA，爬虫只能拿到空壳。这里为每一期生成一份带全文的静态 HTML，
+// 放在 /p/YYYY-MM-DD，配 canonical / og / JSON-LD，供 Google、百度抓取。
+
+function srcLink(s) {
+  if (s && typeof s === 'object') {
+    var name = esc(s.name || s.title || s.url || '来源');
+    return s.url ? '<a href="' + esc(s.url) + '" rel="noopener noreferrer">' + name + '</a>' : name;
+  }
+  var nm = esc(String(s || '来源'));
+  return '<a href="https://www.baidu.com/s?wd=' + encodeURIComponent(String(s || '')) + '" rel="noopener noreferrer">' + nm + '</a>';
+}
+
+function articleHTML(issue, date, origin) {
+  var title = issue.subtitle || issue.title || ('每日枣报 · ' + date);
+  var fullTitle = title + ' · 每日枣报';
+  var desc = issue.lead || (issue.goldenQuotes && issue.goldenQuotes[0]) || ('每日枣报 ' + date + ' 十条要闻与枣评');
+  var canonical = origin + '/p/' + date;
+  var image = origin + '/assets/cover.png';
+
+  var items = issue.items || [];
+  var body = '';
+  items.forEach(function (it, i) {
+    body += '<article class="news-item"><h2>' + pad2(i + 1) + ' ' + esc(it.title || '') + '</h2>';
+    if (it.facts) body += '<p class="facts">' + esc(it.facts) + '</p>';
+    if (it.comment) body += '<p class="comment">' + esc(it.comment) + '</p>';
+    if (it.quote) body += '<blockquote>' + esc(it.quote) + '</blockquote>';
+    if (it.sources && it.sources.length) {
+      body += '<p class="sources">来源：' + it.sources.map(srcLink).join(' · ') + '</p>';
+    }
+    body += '</article>';
+  });
+  if (issue.goldenQuotes && issue.goldenQuotes.length) {
+    body += '<section class="golden"><h2>本期金句</h2><ol>';
+    issue.goldenQuotes.forEach(function (q) { body += '<li>' + esc(q) + '</li>'; });
+    body += '</ol></section>';
+  }
+  var quoteArr = (issue.goldenQuotes || []).slice(0, 5);
+  var ld = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: title,
+    description: desc,
+    datePublished: date,
+    dateModified: date,
+    image: image,
+    author: { '@type': 'Organization', name: '每日枣报' },
+    publisher: { '@type': 'Organization', name: '每日枣报', logo: { '@type': 'ImageObject', url: image } },
+    mainEntityOfPage: canonical
+  };
+
+  return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>' + esc(fullTitle) + '</title>' +
+    '<meta name="description" content="' + esc(desc) + '">' +
+    '<link rel="canonical" href="' + esc(canonical) + '">' +
+    '<meta property="og:type" content="article">' +
+    '<meta property="og:site_name" content="每日枣报">' +
+    '<meta property="og:title" content="' + esc(fullTitle) + '">' +
+    '<meta property="og:description" content="' + esc(desc) + '">' +
+    '<meta property="og:image" content="' + esc(image) + '">' +
+    '<meta property="og:url" content="' + esc(canonical) + '">' +
+    '<meta name="twitter:card" content="summary_large_image">' +
+    '<meta name="twitter:title" content="' + esc(fullTitle) + '">' +
+    '<meta name="twitter:description" content="' + esc(desc) + '">' +
+    '<meta name="twitter:image" content="' + esc(image) + '">' +
+    '<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">' +
+    '<link rel="icon" type="image/svg+xml" href="/assets/zao.svg">' +
+    '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>' +
+    '<style>' +
+    '*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#faf7f2;color:#2a2520;line-height:1.8}' +
+    '.wrap{max-width:720px;margin:0 auto;padding:0 20px}' +
+    'header{background:linear-gradient(135deg,#7a1a16,#b33028);color:#fff;padding:34px 20px 30px}' +
+    'header .wrap{padding:0}.brand{font-size:13px;letter-spacing:2px;opacity:.85;text-decoration:none;color:#fff}' +
+    'h1{font-family:Georgia,"Songti SC","SimSun",serif;font-size:28px;line-height:1.4;margin:14px 0 8px;font-weight:600}' +
+    '.date{font-size:13px;opacity:.8;letter-spacing:1px}' +
+    'main{padding:26px 20px 60px}.lead{font-size:16px;color:#5a5046;margin:0 0 26px}' +
+    '.news-item{padding:20px 0;border-bottom:1px solid #e8e0d5}.news-item h2{font-size:19px;line-height:1.5;margin:0 0 12px;color:#7a1a16}' +
+    '.facts{font-size:15px;color:#3a342d;margin:0 0 10px}.comment{font-size:15px;color:#5a5046;margin:0 0 10px;padding-left:12px;border-left:3px solid #d9a9a4}' +
+    'blockquote{margin:0 0 10px;padding:12px 16px;background:#fff;border-radius:8px;font-family:Georgia,"Songti SC",serif;font-size:17px;color:#8f201b}' +
+    '.sources{font-size:12px;color:#8a8075}.sources a{color:#b33028;text-decoration:none}' +
+    '.golden{margin-top:30px;padding:20px;background:#fff;border-radius:12px}.golden h2{font-size:17px;color:#7a1a16;margin:0 0 10px}.golden ol{padding-left:22px;margin:0;color:#4a423a}.golden li{margin:6px 0}' +
+    '.back{display:inline-block;margin-top:30px;background:#b33028;color:#fff;text-decoration:none;padding:11px 24px;border-radius:999px;font-size:14px}' +
+    'footer{text-align:center;color:#9a9085;font-size:12px;padding:24px 20px 40px}' +
+    '@media(max-width:480px){h1{font-size:23px}.news-item h2{font-size:17px}}' +
+    '</style></head><body>' +
+    '<header><div class="wrap"><a class="brand" href="' + esc(origin + '/') + '">枣 ZAOBAO DAILY · 每日枣报</a>' +
+    '<h1>' + esc(title) + '</h1><div class="date">' + esc(date) + ' · 每天十条要闻，附枣评</div></div></header>' +
+    '<main class="wrap">' + (issue.lead ? '<p class="lead">' + esc(issue.lead) + '</p>' : '') + body +
+    '<a class="back" href="' + esc(origin + '/#/' + date) + '">在枣报 site 查看互动版与留言 →</a></main>' +
+    '<footer>每日枣报 · 独立 · 克制 · 有态度</footer></body></html>';
+}
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+async function handleArticle(env, url) {
+  var date = (url.pathname.replace(/^\/p\//, '').replace(/\.html$/, '') || '').slice(0, 10);
+  if (!validDate(date)) return new Response('bad date', { status: 400 });
+  var assetReq = new Request(new URL('/posts/' + date + '.json', url.origin).toString());
+  var res = await env.ASSETS.fetch(assetReq);
+  if (!res.ok) return new Response('not found', { status: 404 });
+  var issue;
+  try { issue = await res.json(); } catch (e) { return new Response('bad json', { status: 500 }); }
+  return new Response(articleHTML(issue, date, url.origin), {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=600' }
+  });
+}
+
+async function handleSitemap(env, url) {
+  var assetReq = new Request(new URL('/posts/index.json', url.origin).toString());
+  var res = await env.ASSETS.fetch(assetReq);
+  var issues = [];
+  if (res.ok) {
+    try { issues = (await res.json()).issues || []; } catch (e) {}
+  }
+  var origin = url.origin;
+  var urls = [{ loc: origin + '/', pri: '1.0' }];
+  issues.forEach(function (x) {
+    if (validDate(x.date)) urls.push({ loc: origin + '/p/' + x.date, pri: '0.9' });
+  });
+  urls.push({ loc: origin + '/manifesto.html', pri: '0.5' });
+  var xml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+  urls.forEach(function (u) {
+    xml += '<url><loc>' + esc(u.loc) + '</loc><priority>' + u.pri + '</priority></url>';
+  });
+  xml += '</urlset>';
+  return new Response(xml, {
+    status: 200,
+    headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' }
+  });
+}
+
+function handleRobots(url) {
+  var txt = 'User-agent: *\nAllow: /\nSitemap: ' + url.origin + '/sitemap.xml\n';
+  return new Response(txt, {
+    status: 200,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' }
+  });
+}
+
 async function handleViews(req, env, url) {
   var kv = env.ZAOBAO_KV;
   if (!kv) return json({ count: 0, degraded: true });
@@ -145,6 +287,44 @@ async function handleViews(req, env, url) {
     await kv.put('viewcount:' + date, String(count));
   }
   return json({ count: count }, 200, setCookie ? { 'Set-Cookie': setCookie } : {});
+}
+
+// 红心点赞：每人每期一次，KV 计数 + cookie 去重，可切换（再点取消）
+async function handleLikes(req, env, url) {
+  var kv = env.ZAOBAO_KV;
+  if (!kv) return json({ count: 0, liked: false, degraded: true });
+  var date = (url.searchParams.get('date') || '').slice(0, 10);
+  if (!validDate(date)) return json({ error: 'bad date' }, 400);
+
+  var vid = getCookie(req, 'zb_vid');
+  var setCookie = '';
+  if (!vid) {
+    vid = crypto.randomUUID();
+    setCookie = 'zb_vid=' + vid + '; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax';
+  }
+
+  var likedKey = 'like:' + date + ':' + vid;
+  var countKey = 'likecount:' + date;
+  var count = parseInt(await kv.get(countKey) || '0', 10) || 0;
+  var liked = !!(await kv.get(likedKey));
+
+  if (req.method === 'POST') {
+    var body = await req.json().catch(function () { return {}; });
+    var want = body && (body.like === true || body.like === 'true');
+    if (want && !liked) {
+      liked = true;
+      count += 1;
+      await kv.put(likedKey, '1', { expirationTtl: 31536000 });
+      await kv.put(countKey, String(count));
+    } else if (!want && liked) {
+      liked = false;
+      count = count > 0 ? count - 1 : 0;
+      await kv.delete(likedKey);
+      await kv.put(countKey, String(count));
+    }
+  }
+
+  return json({ count: count, liked: liked }, 200, setCookie ? { 'Set-Cookie': setCookie } : {});
 }
 
 async function handleComments(req, env, url) {
@@ -244,6 +424,13 @@ async function handleAdmin(req, env, url) {
     }
     views.sort(function (a, b) { return b.date.localeCompare(a.date); });
 
+    var likeKeys = await listPrefix(kv, 'likecount:');
+    var likes = [];
+    for (var m = 0; m < likeKeys.length; m++) {
+      likes.push({ date: likeKeys[m].slice(10), count: parseInt(await kv.get(likeKeys[m]) || '0', 10) });
+    }
+    likes.sort(function (a, b) { return b.date.localeCompare(a.date); });
+
     var cKeys = await listPrefix(kv, 'comments:');
     var comments = [];
     for (var j = 0; j < cKeys.length; j++) {
@@ -252,7 +439,7 @@ async function handleAdmin(req, env, url) {
       if (arr.length) comments.push({ date: cKeys[j].slice(9), list: arr });
     }
     comments.sort(function (a, b) { return b.date.localeCompare(a.date); });
-    return json({ views: views, comments: comments });
+    return json({ views: views, likes: likes, comments: comments });
   }
 
   if (path === '/api/admin/delete' && req.method === 'POST') {
@@ -282,7 +469,22 @@ export default {
       });
     }
 
+    // 搜索引擎收录：静态可索引文章页、站点地图、robots
+    if (path === '/p' || path.indexOf('/p/') === 0) {
+      return handleArticle(env, url).catch(function (e) {
+        return new Response(String(e && e.message || e), { status: 500 });
+      });
+    }
+    if (path === '/sitemap.xml') return handleSitemap(env, url);
+    if (path === '/robots.txt') return handleRobots(url);
+
     if (path === '/api/health') return json({ ok: true, kv: !!env.ZAOBAO_KV });
+
+    if (path === '/api/likes' && (request.method === 'GET' || request.method === 'POST')) {
+      return handleLikes(request, env, url).catch(function (e) {
+        return json({ error: String(e && e.message || e) }, 500);
+      });
+    }
 
     if (path === '/api/views' && request.method === 'GET') {
       return handleViews(request, env, url).catch(function (e) {
