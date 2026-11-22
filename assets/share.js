@@ -9,7 +9,8 @@
     facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7A10 10 0 0 0 22 12z"/></svg>',
     linkedin: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 2H3.6C2.7 2 2 2.7 2 3.6v16.8c0 .9.7 1.6 1.6 1.6h16.8c.9 0 1.6-.7 1.6-1.6V3.6c0-.9-.7-1.6-1.6-1.6zM8 18.5H5V9.4h3v9.1zM6.5 8.1a1.7 1.7 0 1 1 0-3.5 1.7 1.7 0 0 1 0 3.5zm12 10.4h-3v-4.5c0-1.1 0-2.5-1.5-2.5s-1.8 1.2-1.8 2.4v4.6H9.2V9.4h2.9v1.2h.1c.4-.8 1.4-1.6 2.9-1.6 3.1 0 3.7 2 3.7 4.6v5z"/></svg>',
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9.5 14.5l5-5"/><path d="M11.5 6.8l1.2-1.2a3.8 3.8 0 0 1 5.4 5.4l-1.2 1.2"/><path d="M12.5 17.2l-1.2 1.2a3.8 3.8 0 0 1-5.4-5.4l1.2-1.2"/></svg>',
-    system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>'
+    system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>',
+    more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>'
   };
 
   var PLAT = {
@@ -20,15 +21,18 @@
   };
 
   var BTNS = [
-    { act: 'wechat', label: '微信', icon: ICON.wechat, cls: 'sh-wechat' },
     { act: 'moments', label: '朋友圈', icon: ICON.moments, cls: 'sh-moments' },
     { act: 'weibo', label: '微博', icon: ICON.weibo, cls: 'sh-weibo' },
     { act: 'x', label: 'X', icon: ICON.x, cls: 'sh-x' },
+    { act: 'wechat', label: '微信', icon: ICON.wechat, cls: 'sh-wechat' },
     { act: 'facebook', label: 'Facebook', icon: ICON.facebook, cls: 'sh-facebook' },
     { act: 'linkedin', label: 'LinkedIn', icon: ICON.linkedin, cls: 'sh-linkedin' },
     { act: 'copy', label: '复制链接', icon: ICON.copy, cls: 'sh-copy' },
     { act: 'system', label: '更多分享', icon: ICON.system, cls: 'sh-system' }
   ];
+  var MAIN_ACTS = ['moments', 'weibo', 'x']; // 主显：朋友圈、微博、X
+  var BTN = {};
+  BTNS.forEach(function (b) { BTN[b.act] = b; });
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -44,26 +48,34 @@
 
   function coverURL() { return location.origin + '/assets/cover.png'; }
 
-  function bar(data) {
-    var p = encodeURIComponent(JSON.stringify(data));
-    var cap = data.kind === 'issue' ? '分享这一期' : '分享这一条';
-    var html = '<div class="share-box"><div class="share-cap">' + esc(cap) + '</div><div class="share-row" data-share="' + p + '">';
-    BTNS.forEach(function (b) {
-      html += '<button type="button" class="sh-ico ' + b.cls + '" data-act="' + b.act +
-        '" title="' + esc(b.label) + '" aria-label="' + esc(b.label) + '">' + b.icon + '</button>';
-    });
-    return html + '</div></div>';
+  function iconButton(b) {
+    return '<button type="button" class="sh-ico ' + b.cls + '" data-act="' + b.act +
+      '" title="' + esc(b.label) + '" aria-label="' + esc(b.label) + '">' + b.icon + '</button>';
   }
 
-  // 紧凑版：仅图标，嵌入来源行右端，与来源左右互补
+  // 主显 3 个 + 「其他」下拉（其余平台）
+  function buttonsHTML() {
+    var html = '';
+    MAIN_ACTS.forEach(function (a) { html += iconButton(BTN[a]); });
+    var rest = BTNS.filter(function (b) { return MAIN_ACTS.indexOf(b.act) < 0; });
+    html += '<span class="sh-more-wrap">' +
+      '<button type="button" class="sh-ico sh-more" data-act="more" title="其他分享方式" aria-label="其他分享方式">' + ICON.more + '</button>' +
+      '<span class="sh-more-menu">';
+    rest.forEach(function (b) { html += iconButton(b); });
+    html += '</span></span>';
+    return html;
+  }
+
+  // 整篇分享：无边框、无文字、居中（样式在 CSS），图标为主显 + 其他
+  function bar(data) {
+    var p = encodeURIComponent(JSON.stringify(data));
+    return '<div class="share-row" data-share="' + p + '">' + buttonsHTML() + '</div>';
+  }
+
+  // 紧凑版：嵌入来源行右端，与来源左右互补
   function miniBar(data) {
     var p = encodeURIComponent(JSON.stringify(data));
-    var html = '<span class="share-row share-mini" data-share="' + p + '">';
-    BTNS.forEach(function (b) {
-      html += '<button type="button" class="sh-ico ' + b.cls + '" data-act="' + b.act +
-        '" title="' + esc(b.label) + '" aria-label="' + esc(b.label) + '">' + b.icon + '</button>';
-    });
-    return html + '</span>';
+    return '<span class="share-row share-mini" data-share="' + p + '">' + buttonsHTML() + '</span>';
   }
 
   function inWeChat() {
@@ -170,19 +182,37 @@
     });
   }
 
+  function closeMenus(except) {
+    var menus = document.querySelectorAll('.sh-more-wrap.open');
+    for (var i = 0; i < menus.length; i++) {
+      if (menus[i] !== except) menus[i].classList.remove('open');
+    }
+  }
+
   document.addEventListener('click', function (e) {
     var btn = e.target && e.target.closest ? e.target.closest('.share-row [data-act]') : null;
-    if (!btn) return;
+    if (!btn) { closeMenus(null); return; }
     var row = btn.closest('[data-share]');
     if (!row) return;
     var data;
     try { data = JSON.parse(decodeURIComponent(row.getAttribute('data-share'))); } catch (err) { return; }
 
+    var act = btn.getAttribute('data-act');
+
+    // 「其他」下拉：展开 / 收起
+    if (act === 'more') {
+      var wrap = btn.closest('.sh-more-wrap');
+      var isOpen = wrap && wrap.classList.contains('open');
+      closeMenus(wrap);
+      if (wrap && !isOpen) wrap.classList.add('open');
+      return;
+    }
+    closeMenus(null);
+
     var url = landingURL(data);
     var title = data.kind === 'issue'
       ? ('每日枣报 · ' + data.date + '｜' + data.title)
       : ('每日枣报｜' + data.title);
-    var act = btn.getAttribute('data-act');
 
     if (act === 'wechat' || act === 'moments') {
       showWxSheet(act, data);
