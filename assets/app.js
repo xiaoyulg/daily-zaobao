@@ -57,7 +57,7 @@
       var url = sourceURL(s);
       var label = esc(s);
       return url
-        ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" title="访问 ' + label + ' 官网">' + label + '</a>'
+        ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" title="查看来源：' + label + '">' + label + '</a>'
         : '<span>' + label + '</span>';
     });
     return '<div class="sources"><b>来源</b> ' + parts.join(' · ') + '</div>';
