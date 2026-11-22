@@ -164,12 +164,38 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .sh-linkedin { color: #0a66c2; }
 .sh-copy { color: var(--ink-soft); }
 .sh-system { color: var(--ink-soft); }
+.sh-more { color: var(--muted); }
 .sh-wechat:hover, .sh-moments:hover { border-color: #07c160; }
 .sh-weibo:hover { border-color: #e6162d; }
 .sh-facebook:hover { border-color: #1877f2; }
 .sh-linkedin:hover { border-color: #0a66c2; }
-.issue-share { margin: 36px 0 0; padding: 22px 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
-.issue-share .share-cap { font-size: 14px; font-weight: 600; color: var(--ink); }
+
+/* 「其他」下拉：默认只显示主显图标，其余收起 */
+.sh-more-wrap { position: relative; display: inline-flex; }
+.sh-more-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 60;
+  display: none; gap: 8px; align-items: center;
+  padding: 8px 10px; white-space: nowrap;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.14);
+}
+.sh-more-wrap.open .sh-more-menu { display: flex; }
+.sh-more-wrap.open .sh-more { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.sh-more-menu .sh-ico { width: 32px; height: 32px; }
+.sh-more-menu .sh-ico svg { width: 16px; height: 16px; }
+
+/* 紧凑来源行内的下拉：隐藏时零占位、图标同步缩小 */
+.share-mini .sh-more-wrap { flex: none; }
+.share-mini .sh-more-menu .sh-ico { width: 26px; height: 26px; }
+.share-mini .sh-more-menu .sh-ico svg { width: 13px; height: 13px; }
+
+/* 整篇分享：去掉边框和文字，缩小行距，居中 */
+.issue-share { margin: 20px 0 4px; padding: 0; background: none; border: 0; text-align: center; }
+.issue-share .share-row { justify-content: center; gap: 10px; }
+.issue-share .sh-ico { width: 34px; height: 34px; }
+.issue-share .sh-ico svg { width: 17px; height: 17px; }
+.issue-share .sh-more-menu .sh-ico { width: 32px; height: 32px; }
+.issue-share .sh-more-menu .sh-ico svg { width: 16px; height: 16px; }
 
 .share-overlay {
   position: fixed; inset: 0; z-index: 100;
