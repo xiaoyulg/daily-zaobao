@@ -80,6 +80,8 @@ main { min-height: 60vh; padding-top: 44px; padding-bottom: 72px; }
 }
 
 .item { padding: 30px 0; border-bottom: 1px solid var(--line); }
+.item-light { background: linear-gradient(90deg, transparent, rgba(156,43,37,.035), transparent); border-radius: 10px; }
+.item-light .comment { border-style: dashed; }
 .item-head { display: flex; gap: 14px; align-items: baseline; }
 .item-no {
   font-family: Georgia, serif;
