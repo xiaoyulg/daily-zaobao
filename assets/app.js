@@ -124,6 +124,30 @@
       html += '</div></section>';
     });
 
+    var edu = issue.education;
+    if (edu && ((edu.items && edu.items.length) || edu.analysis)) {
+      html += '<section class="education">';
+      html += '<h2>' + esc(edu.title || '教育观察 · 中外要闻') + '</h2>';
+      var eduItems = edu.items || [];
+      eduItems.forEach(function (it) {
+        html += '<div class="edu-item">';
+        html += '<div class="edu-head"><span class="edu-region">' + esc(it.region || '资讯') + '</span>';
+        html += '<span class="edu-title">' + esc(it.headline || it.title || '') + '</span></div>';
+        if (it.facts) html += '<p class="edu-facts">' + esc(it.facts) + '</p>';
+        if (it.sources && it.sources.length) {
+          html += '<div class="sources"><b>来源</b> ' + esc(it.sources.join(' · ')) + '</div>';
+        }
+        html += '</div>';
+      });
+      if (edu.analysis) {
+        html += '<div class="edu-analysis"><span class="comment-label">汇 总 点 评</span>';
+        html += '<div>' + esc(edu.analysis) + '</div>';
+        if (edu.quote) html += '<div class="quote">' + esc(edu.quote) + '</div>';
+        html += '</div>';
+      }
+      html += '</section>';
+    }
+
     if (issue.goldenQuotes && issue.goldenQuotes.length) {
       html += '<section class="golden"><h2>本期金句</h2><ol>';
       issue.goldenQuotes.forEach(function (q) { html += '<li>' + esc(q) + '</li>'; });
