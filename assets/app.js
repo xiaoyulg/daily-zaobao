@@ -952,6 +952,19 @@
     var hash = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
     var index = manifest.issues || [];
 
+    // 从旧书签、历史记录或已打开的标签页重新进入根域名时，地址里可能残留
+    // #/YYYY-MM-DD 这样的往期锚点。根入口一律回到最新一期，并清掉过期锚点；
+    // 站内点击「往期」产生的 hashchange 不在此列，仍可正常查看往期。
+    if (!window.__zaobaoRouted) {
+      window.__zaobaoRouted = true;
+      var path = location.pathname;
+      if (hash && /^\d{4}-\d{2}-\d{2}$/.test(hash) &&
+          (path === '/' || /\/index\.html$/.test(path))) {
+        history.replaceState(null, '', path);
+        hash = '';
+      }
+    }
+
     if (hash === 'archive') {
       document.title = '往期归档 · 每日枣报';
       app.innerHTML = renderArchive(manifest);
