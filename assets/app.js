@@ -244,7 +244,13 @@
     html += '<a href="index.html#/tags">标签网</a>';
     html += '<a href="#/archive">全部归档</a>';
     if (older) html += '<a href="#/' + older + '">更早一期 →</a>';
-    html += '</div></div>';
+    html += '</div>';
+    if (index.length && date !== index[0].date) {
+      html += '<div class="past-notice" style="margin:10px 0 0;font-size:13px;">' +
+        '<a href="#/latest" style="display:inline-block;padding:6px 12px;border:1px solid currentColor;border-radius:999px;">' +
+        '你正在阅读往期 · 回到最新一期 →</a></div>';
+    }
+    html += '</div>';
 
     if (issue.lead) html += '<div class="lead">' + esc(issue.lead) + '</div>';
 
@@ -970,14 +976,16 @@
     }
 
     var date = hash;
-    if (!date) {
+    var isDefaultEntry = (!date || date === 'latest');
+    if (isDefaultEntry) {
       if (!index.length) {
         document.title = '每日枣报';
         app.innerHTML = emptyState();
         return;
       }
+      // 默认入口永远展示最新一期：不改写地址栏，刷新/重开页面时会重新解析，
+      // 从而每次打开看到的都是当天最新的一期（#/latest 亦可收藏）。
       date = index[0].date;
-      history.replaceState(null, '', '#/' + date);
     }
 
     loadJSON('posts/' + encodeURIComponent(date) + '.json')
@@ -1033,7 +1041,7 @@
       });
   });
 
-  loadJSON('posts/index.json')
+  loadJSON('posts/index.json?t=' + Date.now())
     .then(function (manifest) {
       route(manifest);
       window.addEventListener('hashchange', function () { route(manifest); });
