@@ -768,14 +768,21 @@ export default {
     return env.ASSETS.fetch(request);
   },
 
-  // 定时推送：每天北京时间 08:30（UTC 00:30）通知搜索引擎有新内容
+  // 定时：每天北京时间 08:30（UTC 00:30）预热规则缓存 + 通知搜索引擎
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
-      pushIndexNow(env).then(function (r) {
-        console.log('IndexNow push', JSON.stringify(r));
-      }).catch(function (e) {
-        console.error('IndexNow push failed', String(e && e.message || e));
-      })
+      Promise.all([
+        getRules(env, false, true).then(function (r) {
+          console.log('Rules cache refreshed', r.version, r.sha256);
+        }).catch(function (e) {
+          console.error('Rules refresh failed', String(e && e.message || e));
+        }),
+        pushIndexNow(env).then(function (r) {
+          console.log('IndexNow push', JSON.stringify(r));
+        }).catch(function (e) {
+          console.error('IndexNow push failed', String(e && e.message || e));
+        })
+      ])
     );
   }
 };
