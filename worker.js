@@ -467,6 +467,8 @@ var RULES_RAW_BASE = 'https://raw.githubusercontent.com/xiaoyulg/daily-zaobao/ma
 var RULES_KV_KEY = 'rules:current';
 var RULES_MIN_BYTES = 40000;
 var RULES_SITE_FALLBACK = 'zaobao-prompt-V4.1.md';
+// 缓存兜底刷新：即使 webhook 未触发，超过此时长也自动回 GitHub 拉最新版（毫秒）
+var RULES_CACHE_TTL_MS = 30 * 60 * 1000;
 
 function ruleHeaderOK(text) {
   return /^#\s*《每日枣报》生产提示词/m.test(text || '');
@@ -514,10 +516,16 @@ function ruleMeta(o) {
   };
 }
 
+function rulesCacheFresh(cached) {
+  if (!cached || !cached.version || !cached.fetchedAt) return false;
+  var t = Date.parse(cached.fetchedAt.replace(' ', 'T'));
+  return !!t && (Date.now() - t < RULES_CACHE_TTL_MS);
+}
+
 async function getRules(env, wantFull, forceRefresh) {
   var kv = env.ZAOBAO_KV;
   var cached = kv ? await kv.get(RULES_KV_KEY, 'json') : null;
-  if (!forceRefresh && cached && cached.version) {
+  if (!forceRefresh && rulesCacheFresh(cached)) {
     return wantFull ? Object.assign({}, cached, { cached: true }) : ruleMeta(Object.assign({}, cached, { cached: true }));
   }
   try {
