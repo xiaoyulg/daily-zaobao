@@ -20,7 +20,11 @@
 - **适用范围（强制）**：**今后无论自动任务还是手动任务、无论哪个客户端（Mac / 沙箱 / 云端 / 手机 / 任何自动化调度），《每日枣报》的生成、质检、发布一律执行本版本，不得引用任何旧版提示词或规则。** 任何任务若发现所持提示词版本早于 V4.1，应视为配置错误，切换至本版本后再执行。
 - **唯一事实源**：规则以 `zaobao-rules/` 的 `00`–`06` 为准；生产提示词由 `build_prompt.py` 拼装生成，不手工维护；本声明随每次拼装进入提示词头部。
 - **版本识别**：所有提示词产物头部标注 `V4.1「主编定本」`。见到此标记即为现行版本。
-- **发布通道（强制，2026-11-25 增）**：沙箱 `/workspace/` 只在本环境可见，**外部客户端（Mac/手机/云端调度）访问不到**。每次规则升级、`build_prompt.py` 重跑后，必须把新提示词上传到仓库 `xiaoyulg/daily-zaobao` 的 `rules/zaobao-prompt-Vx.y.md`（ASCII 文件名，避免 URL 编码问题），使各客户端可通过 `https://raw.githubusercontent.com/xiaoyulg/daily-zaobao/main/rules/zaobao-prompt-Vx.y.md` 拉取。仅把文件写在沙箱本地＝未完成发布，客户端“查不到新版”属预期结果。版本升级时同步更新本条中的文件名与 raw 链接。
+- **发布通道（强制，2026-11-25 增，当日补强为三通道）**：沙箱 `/workspace/` 只在本环境可见，**外部客户端（Mac/手机/云端调度）访问不到**。仅把文件写在沙箱本地＝未完成发布，客户端“查不到新版”属预期结果。每次规则升级、`build_prompt.py` 重跑后，必须完成以下**三处**同步，缺一不可：
+  1. **资料库（WorkBuddy 原生，跨设备，首要通道）**：把新提示词以 Markdown 建成资料库 doc，标题含版本号与“跨客户端同步源”；另建/更新一份《规则同步索引（当前 Vx.y）》doc，写明当前版本、版本判据、三通道链接。客户端凭同一账号即可检索到全文——mac 端“已核查渠道”通常包含资料库，不含 GitHub raw 或站点。
+  2. **报纸站点（公开 HTTPS）**：上传到仓库 `xiaoyulg/daily-zaobao` 的 `rules/zaobao-prompt-Vx.y.md`（ASCII 文件名，避免 URL 编码问题），经 Cloudflare Assets 自动部署到 `https://zaobao.sdgzu.edu.kg/rules/zaobao-prompt-Vx.y.md`。
+  3. **GitHub raw**：`https://raw.githubusercontent.com/xiaoyulg/daily-zaobao/main/rules/zaobao-prompt-Vx.y.md`。
+  版本升级时三处的版本号与链接同步更新。**判据**：三通道全文首行均为 `# 《每日枣报》生产提示词 · Vx.y「主编定本」`。
 
 > 层级：L0 总纲｜稳定层，非必要不改。
 > 适用：所有内容环节；与 L1 冲突时以本层为准。
