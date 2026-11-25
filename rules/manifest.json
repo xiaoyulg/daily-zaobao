@@ -6,7 +6,7 @@
   "bytes": 43143,
   "sha256": "f0e48c000d246d15ba8fbcae3775e524526e1aacc201493c48fb34df3bf80f09",
   "effectiveFrom": "2026-11-25",
-  "updatedAt": "2026-11-25T14:45:35+08:00",
+  "updatedAt": "2026-11-25T20:33:37+08:00",
   "changelog": [
     "L0 读者的单一性：期号/账本/元话语不入正文",
     "L0 中文文法与造词：禁自造词，三问判定，一票否决",
@@ -26,8 +26,9 @@
       "version": "V4.1",
       "file": "zaobao-prompt-V4.1.md",
       "sha256": "f0e48c000d246d15ba8fbcae3775e524526e1aacc201493c48fb34df3bf80f09",
-      "updatedAt": "2026-11-25T14:45:35+08:00",
-      "commit": "7bf8bc29"
+      "updatedAt": "2026-11-25T20:33:37+08:00",
+      "commit": "f188d385",
+      "bytes": 43143
     }
   ]
 }
