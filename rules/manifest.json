@@ -1,0 +1,33 @@
+{
+  "schema": "zaobao-rules-manifest/1",
+  "version": "V4.1",
+  "title": "《每日枣报》生产提示词 · V4.1「主编定本」",
+  "file": "zaobao-prompt-V4.1.md",
+  "bytes": 43143,
+  "sha256": "f0e48c000d246d15ba8fbcae3775e524526e1aacc201493c48fb34df3bf80f09",
+  "effectiveFrom": "2026-11-25",
+  "updatedAt": "2026-11-25T14:45:35+08:00",
+  "changelog": [
+    "L0 读者的单一性：期号/账本/元话语不入正文",
+    "L0 中文文法与造词：禁自造词，三问判定，一票否决",
+    "subtitle ≤24 字、单一主句、写成判断、禁罗列多主题",
+    "金句逐字摘自 comment，goldenQuotes 无数量下限",
+    "境外原文 ≥3 条且 ≥3 家媒体，国际条目 100% 外文原文为来源之一",
+    "每期 1 条弱信号位、≥6 条典型性、≥1 条中西关注差异",
+    "质检扩至 27+2 项"
+  ],
+  "channels": {
+    "githubRaw": "https://raw.githubusercontent.com/xiaoyulg/daily-zaobao/main/rules/zaobao-prompt-V4.1.md",
+    "site": "https://zaobao.sdgzu.edu.kg/rules/zaobao-prompt-V4.1.md",
+    "api": "https://zaobao.sdgzu.edu.kg/api/rules/current"
+  },
+  "history": [
+    {
+      "version": "V4.1",
+      "file": "zaobao-prompt-V4.1.md",
+      "sha256": "f0e48c000d246d15ba8fbcae3775e524526e1aacc201493c48fb34df3bf80f09",
+      "updatedAt": "2026-11-25T14:45:35+08:00",
+      "commit": "7bf8bc29"
+    }
+  ]
+}
