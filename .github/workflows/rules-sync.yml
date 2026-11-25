@@ -1,0 +1,113 @@
+name: 规则变更同步
+
+# 手机端/桌面端只要 push rules/zaobao-prompt-*.md，就自动更新版本清单并通知 Cloudflare 刷新缓存。
+# manifest.json 的改动不触发本工作流（避免回环）；工作流自己提交 manifest 时用 [skip ci]。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'rules/zaobao-prompt-*.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: 校验规则文件并刷新版本清单
+        id: rules
+        run: |
+          python3 - <<'PY'
+          import os, re, json, hashlib, subprocess, glob, datetime
+
+          changed = subprocess.check_output(
+              ['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', os.environ['GITHUB_SHA']],
+              text=True).splitlines()
+          files = [f for f in changed if re.match(r'^rules/zaobao-prompt-.*\.md$', f)]
+          if not files:
+              # workflow_dispatch 时取 rules/ 下最新的提示词文件
+              allf = glob.glob('rules/zaobao-prompt-*.md')
+              files = [max(allf)] if allf else []
+          if not files:
+              raise SystemExit('未找到规则文件')
+
+          path = files[0]
+          raw = open(path, 'rb').read()
+          text = raw.decode('utf-8')
+          first = text.splitlines()[0] if text.splitlines() else ''
+          if not first.lstrip().startswith('# 《每日枣报》生产提示词'):
+              raise SystemExit('规则首行格式不符：' + first)
+          if len(raw) < 40000:
+              raise SystemExit('规则文件过小：%d 字节' % len(raw))
+
+          sha = hashlib.sha256(raw).hexdigest()
+          name = os.path.basename(path)
+          m = re.search(r'V\d+(?:\.\d+)?', name)
+          version = m.group(0) if m else 'unknown'
+          now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+          stamp = now.strftime('%Y-%m-%dT%H:%M:%S+08:00')
+
+          mpath = 'rules/manifest.json'
+          mf = {'schema': 'zaobao-rules-manifest/1'}
+          if os.path.exists(mpath):
+              mf = json.load(open(mpath, encoding='utf-8'))
+          mf.update({
+              'version': version,
+              'file': name,
+              'sha256': sha,
+              'bytes': len(raw),
+              'updatedAt': stamp,
+              'channels': {
+                  'githubRaw': 'https://raw.githubusercontent.com/xiaoyulg/daily-zaobao/main/rules/' + name,
+                  'site': 'https://zaobao.sdgzu.edu.kg/rules/' + name,
+                  'api': 'https://zaobao.sdgzu.edu.kg/api/rules/current'
+              }
+          })
+          hist = mf.get('history') or []
+          if not hist or hist[0].get('version') != version:
+              hist.insert(0, {'version': version, 'file': name, 'sha256': sha,
+                              'updatedAt': stamp, 'commit': os.environ['GITHUB_SHA'][:8]})
+          else:
+              hist[0].update({'sha256': sha, 'bytes': len(raw), 'updatedAt': stamp,
+                              'commit': os.environ['GITHUB_SHA'][:8]})
+          mf['history'] = hist[:20]
+          json.dump(mf, open(mpath, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+          open(mpath, 'a', encoding='utf-8').write('\n')
+
+          print('version=%s' % version)
+          print('file=%s bytes=%d sha256=%s' % (name, len(raw), sha))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write('version=%s\n' % version)
+              out.write('sha256=%s\n' % sha)
+              out.write('file=%s\n' % name)
+          PY
+
+      - name: 提交更新后的版本清单
+        run: |
+          git config user.name "zaobao-rules-bot"
+          git config user.email "zaobao-rules-bot@users.noreply.github.com"
+          git add rules/manifest.json
+          if git diff --cached --quiet; then
+            echo "manifest 无变化，跳过提交"
+          else
+            git commit -m "chore: 刷新规则版本清单至 ${{ steps.rules.outputs.version }} [skip ci]"
+            git push
+          fi
+
+      - name: 通知 Cloudflare 刷新规则缓存
+        run: |
+          KEY="${{ secrets.RULES_REFRESH_KEY }}"
+          if [ -z "$KEY" ]; then KEY="292930e38c35c1833331977875421058"; fi
+          echo "刷新版本 ${{ steps.rules.outputs.version }} (${{ steps.rules.outputs.sha256 }})"
+          curl -4 -sS --max-time 60 -X POST \
+            -H "X-Rules-Key: $KEY" \
+            "https://zaobao.sdgzu.edu.kg/api/rules/refresh?cb=$RANDOM"
+          echo
