@@ -221,13 +221,13 @@
     return html;
   }
 
-  function renderIssue(issue, index, views, comments) {
+  function renderIssue(issue, index, views, comments, all) {
     var date = issue.date;
     var dates = index.map(function (x) { return x.date || x; });
     var i = dates.indexOf(date);
     var newer = i >= 0 ? dates[i - 1] : null;
     var older = i >= 0 ? dates[i + 1] : null;
-    var mainTitle = issue.title || issue.subtitle || ('每日枣报 · ' + date);
+    var mainTitle = issue.subtitle || issue.title || ('每日枣报 · ' + date);
 
     var html = '<article class="issue">';
     html += '<div class="issue-head">';
@@ -331,9 +331,7 @@
     }).slice(0, 4);
     past.forEach(function (it) {
       var d = it.date || it;
-      var t = it.subtitle || (it.summary ? String(it.summary).split(/[。！？]/)[0] : '') ||
-              (it.title ? String(it.title).replace(/每日枣报\s*·\s*\d{4}-\d{2}-\d{2}/, '').trim() : '') ||
-              ('每日枣报 · ' + d);
+      var t = issueTitle(d, it, all);
       html += '<li><a href="#/' + esc(d) + '">';
       html += '<span class="a-title">' + esc(t) + '</span>';
       html += '<span class="a-date">' + esc(d) + '</span>';
@@ -357,6 +355,27 @@
   }
 
   var allIssuesCache = null;
+
+  // 期次标题的唯一来源：期次 JSON 的 subtitle；索引只作离线回退。
+  // 这样正文 H1、正文末尾「往期」与「往期归档」永远取同一行标题。
+  function issueTitle(date, entry, all) {
+    if (all && all.length) {
+      for (var i = 0; i < all.length; i++) {
+        if (all[i] && all[i].date === date) {
+          return all[i].subtitle || all[i].title || ('每日枣报 · ' + date);
+        }
+      }
+    }
+    if (entry) {
+      if (entry.subtitle) return entry.subtitle;
+      if (entry.title) {
+        var t = String(entry.title).replace(/每日枣报\s*·\s*\d{4}-\d{2}-\d{2}/, '').trim();
+        if (t) return t;
+      }
+      if (entry.summary) return String(entry.summary).split(/[。！？]/)[0];
+    }
+    return '每日枣报 · ' + date;
+  }
 
   function getAllIssues(manifest) {
     var key = manifest.updatedAt || '';
@@ -923,7 +942,7 @@
     return html;
   }
 
-  function renderArchive(manifest) {
+  function renderArchive(manifest, all) {
     var issues = manifest.issues || [];
     var html = '<div class="archive-head"><h1>往期归档</h1><p>共 ' + issues.length + ' 期 · 按时间倒序</p></div>';
     if (!issues.length) return emptyState();
@@ -931,9 +950,8 @@
     issues.forEach(function (it) {
       html += '<li><a href="#/' + esc(it.date) + '">';
       html += '<span class="a-date">' + esc(it.date) + '</span>';
-      html += '<span><span class="a-title">' + esc(it.title || '每日枣报') + '</span>';
-      if (it.summary) html += '<span class="a-summary">' + esc(it.summary) + '</span>';
-      html += '</span></a></li>';
+      html += '<span><span class="a-title">' + esc(issueTitle(it.date, it, all)) + '</span></span>';
+      html += '</a></li>';
     });
     html += '</ul>';
     return html;
@@ -967,7 +985,10 @@
 
     if (hash === 'archive') {
       document.title = '往期归档 · 每日枣报';
-      app.innerHTML = renderArchive(manifest);
+      app.innerHTML = '<div class="loading">正在整理往期…</div>';
+      getAllIssues(manifest).then(function (all) {
+        app.innerHTML = renderArchive(manifest, all);
+      }).catch(showError);
       return;
     }
 
@@ -1003,9 +1024,9 @@
 
     loadJSON('posts/' + encodeURIComponent(date) + '.json')
       .then(function (issue) {
-        return Promise.all([getViews(date), getComments(date)]).then(function (res) {
-          document.title = (issue.title || issue.subtitle || ('每日枣报 · ' + date)) + ' · 每日枣报';
-          app.innerHTML = renderIssue(issue, index, res[0], res[1]);
+        return Promise.all([getViews(date), getComments(date), getAllIssues(manifest)]).then(function (res) {
+          document.title = (issue.subtitle || issue.title || ('每日枣报 · ' + date)) + ' · 每日枣报';
+          app.innerHTML = renderIssue(issue, index, res[0], res[1], res[2]);
         });
       })
       .catch(function (e) {
