@@ -317,6 +317,10 @@ a.tag:hover { color: #fff; background: var(--accent); border-color: var(--accent
 .past-list .a-title { font-weight: 600; font-size: 15px; }
 .past-list .a-date { font-family: Georgia, serif; color: var(--muted); font-size: 12px; margin-left: 8px; white-space: nowrap; }
 .past-issues .manifesto-entry .a-date { color: var(--accent); font-weight: 600; }
+
+/* 往期标题后的阅读次数：浅色小号，辅助信息弱化呈现 */
+.a-views { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; margin-left: 8px; white-space: nowrap; }
+.past-list .a-views { font-weight: 400; }
 .nav-jump {
   background: none; border: 0; padding: 0; font: inherit;
   color: inherit; cursor: pointer;
