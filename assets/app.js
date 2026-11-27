@@ -182,6 +182,19 @@
       });
   }
 
+  // 往期列表阅读次数：渲染骨架后异步回填，失败不阻断列表
+  function fillPastViews(root) {
+    var nodes = (root || document).querySelectorAll('.a-views[data-date]');
+    if (!nodes || !nodes.length) return;
+    Array.prototype.forEach.call(nodes, function (el) {
+      var d = el.getAttribute('data-date');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+      getViews(d).then(function (n) {
+        el.textContent = '阅读 ' + ((n && n > 0) ? n : 0) + ' 次';
+      });
+    });
+  }
+
   function getComments(date) {
     return apiJSON('api/comments?date=' + encodeURIComponent(date))
       .then(function (d) {
@@ -334,6 +347,7 @@
       var t = issueTitle(d, it, all);
       html += '<li><a href="#/' + esc(d) + '">';
       html += '<span class="a-title">' + esc(t) + '</span>';
+      html += '<span class="a-views" data-date="' + esc(d) + '"></span>';
       html += '<span class="a-date">' + esc(d) + '</span>';
       html += '</a></li>';
     });
@@ -950,7 +964,8 @@
     issues.forEach(function (it) {
       html += '<li><a href="#/' + esc(it.date) + '">';
       html += '<span class="a-date">' + esc(it.date) + '</span>';
-      html += '<span><span class="a-title">' + esc(issueTitle(it.date, it, all)) + '</span></span>';
+      html += '<span><span class="a-title">' + esc(issueTitle(it.date, it, all)) + '</span>' +
+        '<span class="a-views" data-date="' + esc(it.date) + '"></span></span>';
       html += '</a></li>';
     });
     html += '</ul>';
@@ -988,6 +1003,7 @@
       app.innerHTML = '<div class="loading">正在整理往期…</div>';
       getAllIssues(manifest).then(function (all) {
         app.innerHTML = renderArchive(manifest, all);
+        fillPastViews(app);
       }).catch(showError);
       return;
     }
@@ -1027,6 +1043,7 @@
         return Promise.all([getViews(date), getComments(date), getAllIssues(manifest)]).then(function (res) {
           document.title = (issue.subtitle || issue.title || ('每日枣报 · ' + date)) + ' · 每日枣报';
           app.innerHTML = renderIssue(issue, index, res[0], res[1], res[2]);
+          fillPastViews(app);
         });
       })
       .catch(function (e) {
