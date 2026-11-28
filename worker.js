@@ -300,8 +300,9 @@ async function pushIndexNow(env, origin) {
 async function handleViews(req, env, url) {
   var kv = env.ZAOBAO_KV;
   if (!kv) return json({ count: 0, degraded: true });
-  var date = (url.searchParams.get('date') || '').slice(0, 10);
-  if (!validDate(date)) return json({ error: 'bad date' }, 400);
+  // 允许非日期.slug（当前仅 manifesto=创刊词）；其余仍须为 YYYY-MM-DD
+  var date = (url.searchParams.get('date') || '').slice(0, 32);
+  if (date !== 'manifesto' && !validDate(date)) return json({ error: 'bad date' }, 400);
 
   var vid = getCookie(req, 'zb_vid');
   var setCookie = '';
@@ -395,7 +396,7 @@ async function handleComments(req, env, url) {
   return json({ error: 'method not allowed' }, 405);
 }
 
-// ============ 邮件订阅：邮箱存 KV，供每日 9:00 投递任务读取 ============
+// ============ 邮件订阅：邮箱存 KV，供每日 12:45 投递任务读取 ============
 var SUB_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 var SUB_LIST_KEY = '292930e38c35c1833331977875421058'; // 仅用于读取订阅列表的内部密钥
 
@@ -453,126 +454,10 @@ async function handleSubscribe(req, env, url) {
     await kv.put(rateKey, String(used + 1), { expirationTtl: 86401 });
     return json({
       ok: true, subscribed: true,
-      message: existed ? '你已订阅，每天上午 9:00 见。' : '订阅成功！每天上午 9:00 见。'
+      message: existed ? '你已订阅，每天中午 12:45 见。' : '订阅成功！每天中午 12:45 见。'
     });
   }
   return json({ error: 'method not allowed' }, 405);
-}
-
-// ============ 规则分发：GitHub rules/ 为唯一权威源，KV 缓存 + 统一 API ============
-// 任何客户端（手机/桌面/定时任务）只认 /api/rules/current，不再各自维护规则正文。
-// 数据链：GitHub raw manifest.json → 规则全文 → SHA 校验 → KV 缓存 → 各端按需取。
-var RULES_MANIFEST_RAW = 'https://raw.githubusercontent.com/xiaoyulg/daily-zaobao/main/rules/manifest.json';
-var RULES_RAW_BASE = 'https://raw.githubusercontent.com/xiaoyulg/daily-zaobao/main/rules/';
-var RULES_KV_KEY = 'rules:current';
-var RULES_MIN_BYTES = 40000;
-var RULES_SITE_FALLBACK = 'zaobao-prompt-V4.1.md';
-// 缓存兜底刷新：即使 webhook 未触发，超过此时长也自动回 GitHub 拉最新版（毫秒）
-var RULES_CACHE_TTL_MS = 30 * 60 * 1000;
-
-function ruleHeaderOK(text) {
-  return /^#\s*《每日枣报》生产提示词/m.test(text || '');
-}
-
-async function fetchRuleText(url) {
-  var u = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'cb=' + Date.now() + Math.floor(Math.random() * 1000000);
-  var r = await fetch(u, { headers: { 'Cache-Control': 'no-cache' }, cf: { cacheTtl: 0 } });
-  if (!r.ok) throw new Error('rule fetch ' + r.status + ' @ ' + url);
-  return await r.text();
-}
-
-async function loadRulesFromGitHub() {
-  var mf = JSON.parse(await fetchRuleText(RULES_MANIFEST_RAW));
-  if (!mf.file || !mf.version) throw new Error('bad rules manifest');
-  var text = await fetchRuleText(RULES_RAW_BASE + mf.file);
-  if (!ruleHeaderOK(text)) throw new Error('rule header mismatch');
-  var bytes = new TextEncoder().encode(text).length;
-  if (bytes < RULES_MIN_BYTES) throw new Error('rule too short: ' + bytes);
-  var digest = await sha256(text);
-  if (mf.sha256 && digest !== mf.sha256) {
-    throw new Error('rule sha mismatch: ' + digest + ' != ' + mf.sha256);
-  }
-  var d = new Date(Date.now() + 8 * 3600 * 1000);
-  return {
-    version: mf.version,
-    title: mf.title || '',
-    file: mf.file,
-    bytes: bytes,
-    sha256: digest,
-    updatedAt: mf.updatedAt || '',
-    changelog: mf.changelog || [],
-    channels: mf.channels || {},
-    content: text,
-    fetchedAt: d.toISOString().slice(0, 19).replace('T', ' ') + '+08:00'
-  };
-}
-
-function ruleMeta(o) {
-  return {
-    version: o.version, title: o.title, file: o.file, bytes: o.bytes,
-    sha256: o.sha256, updatedAt: o.updatedAt, changelog: o.changelog,
-    fetchedAt: o.fetchedAt, cached: !!o.cached, stale: !!o.stale,
-    source: o.source || '', warning: o.warning || ''
-  };
-}
-
-function rulesCacheFresh(cached) {
-  if (!cached || !cached.version || !cached.fetchedAt) return false;
-  var t = Date.parse(cached.fetchedAt.replace(' ', 'T'));
-  return !!t && (Date.now() - t < RULES_CACHE_TTL_MS);
-}
-
-async function getRules(env, wantFull, forceRefresh) {
-  var kv = env.ZAOBAO_KV;
-  var cached = kv ? await kv.get(RULES_KV_KEY, 'json') : null;
-  if (!forceRefresh && rulesCacheFresh(cached)) {
-    return wantFull ? Object.assign({}, cached, { cached: true }) : ruleMeta(Object.assign({}, cached, { cached: true }));
-  }
-  try {
-    var fresh = await loadRulesFromGitHub();
-    if (kv) await kv.put(RULES_KV_KEY, JSON.stringify(fresh));
-    return wantFull ? Object.assign({}, fresh, { cached: false }) : ruleMeta(Object.assign({}, fresh, { cached: false }));
-  } catch (e) {
-    var warn = String(e && e.message || e);
-    if (cached && cached.version) {
-      var fell = Object.assign({}, cached, { cached: true, stale: true, warning: warn });
-      return wantFull ? fell : ruleMeta(fell);
-    }
-    if (wantFull) {
-      var asset = await env.ASSETS.fetch(new Request('https://zaobao.sdgzu.edu.kg/rules/' + RULES_SITE_FALLBACK));
-      if (asset.ok) {
-        var t = await asset.text();
-        if (ruleHeaderOK(t)) {
-          return {
-            version: 'V4.1', file: RULES_SITE_FALLBACK, content: t,
-            bytes: new TextEncoder().encode(t).length, sha256: await sha256(t),
-            cached: false, stale: true, source: 'site-asset', warning: warn
-          };
-        }
-      }
-    }
-    throw e;
-  }
-}
-
-async function handleRules(req, env, url) {
-  var path = url.pathname;
-  if (path === '/api/rules/refresh') {
-    if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
-    var key = req.headers.get('X-Rules-Key') || url.searchParams.get('key') || '';
-    if (key !== SUB_LIST_KEY) return json({ error: 'unauthorized' }, 401);
-    try {
-      return json(Object.assign({ ok: true }, ruleMeta(await getRules(env, false, true))));
-    } catch (e) {
-      return json({ ok: false, error: String(e && e.message || e) }, 502);
-    }
-  }
-  var wantFull = path === '/api/rules/current';
-  try {
-    return json(await getRules(env, wantFull, false));
-  } catch (e) {
-    return json({ ok: false, error: String(e && e.message || e) }, 502);
-  }
 }
 
 async function adminAuthed(req, kv) {
@@ -751,13 +636,6 @@ export default {
         return json({ error: String(e && e.message || e) }, 500);
       });
     }
-    // 规则分发 API：统一入口，各客户端只认这里
-    if (path === '/api/rules/current' || path === '/api/rules/version' || path === '/api/rules/refresh') {
-      return handleRules(request, env, url).catch(function (e) {
-        return json({ ok: false, error: String(e && e.message || e) }, 500);
-      });
-    }
-
     if (path.indexOf('/api/admin/') === 0) {
       return handleAdmin(request, env, url).catch(function (e) {
         return json({ error: String(e && e.message || e) }, 500);
@@ -768,21 +646,16 @@ export default {
     return env.ASSETS.fetch(request);
   },
 
-  // 定时：每天北京时间 08:30（UTC 00:30）预热规则缓存 + 通知搜索引擎
+  // 定时推送：每天北京时间 12:45（UTC 04:45）通知搜索引擎有新内容
+  // 说明：Cloudflare Cron 按 UTC 执行；本任务与《每日枣报》生成任务（北京时间 12:45）同时刻，
+  // 保证"内容已发布 → 立刻推送收录"的先后顺序。改时间时需同步修改 wrangler.jsonc 的 crons。
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
-      Promise.all([
-        getRules(env, false, true).then(function (r) {
-          console.log('Rules cache refreshed', r.version, r.sha256);
-        }).catch(function (e) {
-          console.error('Rules refresh failed', String(e && e.message || e));
-        }),
-        pushIndexNow(env).then(function (r) {
-          console.log('IndexNow push', JSON.stringify(r));
-        }).catch(function (e) {
-          console.error('IndexNow push failed', String(e && e.message || e));
-        })
-      ])
+      pushIndexNow(env).then(function (r) {
+        console.log('IndexNow push', JSON.stringify(r));
+      }).catch(function (e) {
+        console.error('IndexNow push failed', String(e && e.message || e));
+      })
     );
   }
 };
