@@ -12,6 +12,8 @@
   .manifesto-kicker { font-size: 13px; color: var(--accent); letter-spacing: 2px; font-weight: 600; }
   .manifesto-title { font-size: 32px; font-weight: 700; margin: 12px 0 10px; line-height: 1.35; letter-spacing: .2px; }
   .manifesto-sub { color: var(--muted); font-size: 14px; font-family: Georgia, "Songti SC", serif; }
+  .manifesto-views { margin-top: 10px; color: var(--muted); font-size: 13px; }
+  .manifesto-views b { color: var(--ink-soft); }
   .manifesto-body { font-size: 16.5px; line-height: 1.95; color: var(--ink); }
   .manifesto-body p { margin: 0 0 1.3em; }
   .manifesto-body h2 {
@@ -78,6 +80,7 @@
       <div class="manifesto-kicker">创 刊 词</div>
       <h1 class="manifesto-title">重逢二十年前的那份美好</h1>
       <div class="manifesto-sub">每日枣报 · 发刊辞</div>
+      <div class="manifesto-views" id="manifestoViews" hidden>阅读 <b>–</b> 次</div>
     </div>
 
     <div class="manifesto-body">
@@ -121,5 +124,19 @@
   </div>
 </footer>
 <script src="assets/subscribe.js"></script>
+<script>
+(function () {
+  var el = document.getElementById('manifestoViews');
+  if (!el || !window.fetch) return;
+  fetch('/api/views?date=manifesto', { credentials: 'same-origin' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      var n = parseInt(d && d.count, 10) || 0;
+      el.innerHTML = '阅读 <b>' + n + '</b> 次';
+      el.hidden = false;
+    })
+    .catch(function () { el.hidden = true; });
+})();
+</script>
 </body>
 </html>
